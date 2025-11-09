@@ -52,13 +52,11 @@ class Map:
                 return True
         return False
 
-    def check_teleport(self, pos: Position) -> Teleport | None:
+    def check_teleport(self, rect: pg.Rect) -> Teleport | None:
         """[TODO HACKATHON 6]
         Teleportation: Player can enter a building by walking into certain tiles defined inside saves/*.json, and the map will be changed
         Hint: Maybe there is an way to switch the map using something from src/core/managers/game_manager.py called switch_...
         """
-        pl_rect = pg.Rect(pos.x, pos.y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
-
         for teleporter in self.teleporters:
             tp_rect = pg.Rect(
                 teleporter.pos.x,
@@ -67,13 +65,10 @@ class Map:
                 GameSettings.TILE_SIZE,
             )
 
-            if pl_rect.colliderect(tp_rect):
+            if rect.colliderect(tp_rect):
                 return teleporter
 
         return None
-
-        # second method:
-        # tp_rect = pg.Rect(telepoter.pos.x, teleporter.pos.y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
 
     def _render_all_layers(self, target: pg.Surface) -> None:
         for layer in self.tmxdata.visible_layers:

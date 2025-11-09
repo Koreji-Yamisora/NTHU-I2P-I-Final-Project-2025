@@ -98,7 +98,9 @@ class Player(Entity):
         if self.tp_cooldown > 0:
             self.tp_cooldown -= dt
         elif self.tp_cooldown <= 0:
-            tp = self.game_manager.current_map.check_teleport(self.position)
+            # Update animation position before checking teleport to ensure rect is current
+            self.animation.update_pos(self.position)
+            tp = self.game_manager.current_map.check_teleport(self.animation.rect)
             if tp:
                 dest = tp.destination
                 self.game_manager.switch_map(dest)

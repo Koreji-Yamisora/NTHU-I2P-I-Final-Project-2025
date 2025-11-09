@@ -7,6 +7,7 @@ from src.core import GameManager
 import math
 from typing import override
 
+
 class Player(Entity):
     speed: float = 4.0 * GameSettings.TILE_SIZE
     game_manager: GameManager
@@ -17,7 +18,7 @@ class Player(Entity):
     @override
     def update(self, dt: float) -> None:
         dis = Position(0, 0)
-        '''
+        """
         [TODO HACKATHON 2]
         Calculate the distance change, and then normalize the distance
         
@@ -37,30 +38,65 @@ class Player(Entity):
             dis.x += ...
         if input_manager.key_down(pg.K_UP) or input_manager.key_down(pg.K_w):
             dis.y -= ...
-        if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
+        if input_manager.key_down(jpg.K_DOWN) or input_manager.key_down(pg.K_s):
             dis.y += ...
         
         self.position = ...
-        '''
-        
+        """
+
+        if input_manager.key_down(pg.K_LEFT) or input_manager.key_down(pg.K_a):
+            dis.x -= 1
+        if input_manager.key_down(pg.K_RIGHT) or input_manager.key_down(pg.K_d):
+            dis.x += 1
+        if input_manager.key_down(pg.K_UP) or input_manager.key_down(pg.K_w):
+            dis.y -= 1
+        if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
+            dis.y += 1
+
+        norm = math.sqrt(dis.x**2 + dis.y**2)
+        if norm != 0:
+            dis.x /= norm
+            dis.y /= norm
+
+        dis.x *= self.speed * dt
+        dis.y *= self.speed * dt
+
+        np_rectx = self.animation.rect.copy()
+        np_rectx.x += dis.x
+
+        if self.game_manager.check_collision(np_rectx):
+            dis.x = self._snap_to_grid(dis.x)
+        else:
+            self.position.x += dis.x
+
+        np_recty = self.animation.rect.copy()
+        np_recty.y += dis.y
+        if self.game_manager.check_collision(np_recty):
+            dis.y = self._snap_to_grid(dis.y)
+        else:
+            self.position.y += dis.y
+
         # Check teleportation
         tp = self.game_manager.current_map.check_teleport(self.position)
         if tp:
             dest = tp.destination
             self.game_manager.switch_map(dest)
-                
+
         super().update(dt)
 
     @override
     def draw(self, screen: pg.Surface, camera: PositionCamera) -> None:
         super().draw(screen, camera)
-        
+
     @override
     def to_dict(self) -> dict[str, object]:
         return super().to_dict()
-    
+
     @classmethod
     @override
     def from_dict(cls, data: dict[str, object], game_manager: GameManager) -> Player:
-        return cls(data["x"] * GameSettings.TILE_SIZE, data["y"] * GameSettings.TILE_SIZE, game_manager)
-
+        return cls(
+            data["x"] * GameSettings.TILE_SIZE,
+            data["y"] * GameSettings.TILE_SIZE,
+            game_manager,
+        )

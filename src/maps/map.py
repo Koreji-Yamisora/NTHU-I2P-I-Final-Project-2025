@@ -62,8 +62,8 @@ class Map:
         pos.x = pos.x // GameSettings.TILE_SIZE * GameSettings.TILE_SIZE
         pos.y = pos.y // GameSettings.TILE_SIZE * GameSettings.TILE_SIZE
         for teleporter in self.teleporters:
-            teleporter.pos = teleporter.pos.copy()
-            if teleporter.pos.x == pos.x and teleporter.pos.y == pos.y:
+            teleporter_pos = teleporter.pos.copy()
+            if teleporter_pos.x == pos.x and teleporter_pos.y == pos.y:
                 return teleporter
 
         return None

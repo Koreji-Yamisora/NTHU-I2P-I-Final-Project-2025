@@ -17,7 +17,7 @@ This Project is inspired by classic pokemon game
     # On mac/linux
     source venv/bin/activate
     # On windows
-    ./venv/Scripts/activate
+    ./venv/Scripts/activate.bat
     ```
 2. (Required) Install the required libraries
     ```bash

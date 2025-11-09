@@ -64,7 +64,6 @@ class Player(Entity):
         dis.y *= self.speed * dt
 
         if dis.x != 0 or dis.y != 0:
-            # Prioritize vertical movement if both axes are pressed
             if abs(dis.y) > abs(dis.x):
                 if dis.y < 0:
                     self.direction = Direction.UP

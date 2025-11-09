@@ -13,6 +13,8 @@ This Project is inspired by classic pokemon game
     python3 -m venv venv
     # On Windows 
     python -m venv venv
+    # or
+    py -3.12 -m venv venv
     
     # On mac/linux
     source venv/bin/activate

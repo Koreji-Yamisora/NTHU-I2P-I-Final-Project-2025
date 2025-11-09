@@ -11,11 +11,9 @@ from typing import override
 class Player(Entity):
     speed: float = 4.0 * GameSettings.TILE_SIZE
     game_manager: GameManager
-    tp_cooldown: float
 
     def __init__(self, x: float, y: float, game_manager: GameManager) -> None:
         super().__init__(x, y, game_manager)
-        self.tp_cooldown = 0.0
 
     @override
     def update(self, dt: float) -> None:
@@ -95,14 +93,10 @@ class Player(Entity):
             self.position.y += dis.y
 
         # Check teleportation
-        if self.tp_cooldown > 0:
-            self.tp_cooldown -= dt
-        elif self.tp_cooldown <= 0:
-            tp = self.game_manager.current_map.check_teleport(self.position)
-            if tp:
-                dest = tp.destination
-                self.game_manager.switch_map(dest)
-                self.tp_cooldown = 0.5
+        tp = self.game_manager.current_map.check_teleport(self.position)
+        if tp:
+            dest = tp.destination
+            self.game_manager.switch_map(dest)
 
         super().update(dt)
 

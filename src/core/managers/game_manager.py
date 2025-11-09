@@ -73,7 +73,7 @@ class GameManager:
             self.should_change_scene = False
             if self.player:
                 self.player.position = self.maps[self.current_map_key].spawn
-                self.player_spawns = self.maps[self.current_map_key].spawn
+                self.player_spawns = self.maps.copy()
 
     def check_collision(self, rect: pg.Rect) -> bool:
         if self.maps[self.current_map_key].check_collision(rect):

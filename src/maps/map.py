@@ -57,14 +57,19 @@ class Map:
         Teleportation: Player can enter a building by walking into certain tiles defined inside saves/*.json, and the map will be changed
         Hint: Maybe there is an way to switch the map using something from src/core/managers/game_manager.py called switch_...
         """
-        tile_x = int(pos.x) // GameSettings.TILE_SIZE * GameSettings.TILE_SIZE
-        tile_y = int(pos.y) // GameSettings.TILE_SIZE * GameSettings.TILE_SIZE
 
+        pos = pos.copy()
+        pos.x = pos.x // GameSettings.TILE_SIZE * GameSettings.TILE_SIZE
+        pos.y = pos.y // GameSettings.TILE_SIZE * GameSettings.TILE_SIZE
         for teleporter in self.teleporters:
-            if teleporter.pos.x == tile_x and teleporter.pos.y == tile_y:
+            teleporter.pos = teleporter.pos.copy()
+            if teleporter.pos.x == pos.x and teleporter.pos.y == pos.y:
                 return teleporter
 
         return None
+
+        # second method:
+        # tp_rect = pg.Rect(telepoter.pos.x, teleporter.pos.y, GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
 
     def _render_all_layers(self, target: pg.Surface) -> None:
         for layer in self.tmxdata.visible_layers:

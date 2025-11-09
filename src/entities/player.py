@@ -2,7 +2,7 @@ from __future__ import annotations
 import pygame as pg
 from .entity import Entity
 from src.core.services import input_manager
-from src.utils import Position, PositionCamera, GameSettings, Logger
+from src.utils import Position, PositionCamera, GameSettings, Logger, Direction
 from src.core import GameManager
 import math
 from typing import override
@@ -62,6 +62,23 @@ class Player(Entity):
 
         dis.x *= self.speed * dt
         dis.y *= self.speed * dt
+
+        if dis.x != 0 or dis.y != 0:
+            # Prioritize vertical movement if both axes are pressed
+            if abs(dis.y) > abs(dis.x):
+                if dis.y < 0:
+                    self.direction = Direction.UP
+                    self.animation.switch("up")
+                else:
+                    self.direction = Direction.DOWN
+                    self.animation.switch("down")
+            else:
+                if dis.x < 0:
+                    self.direction = Direction.LEFT
+                    self.animation.switch("left")
+                else:
+                    self.direction = Direction.RIGHT
+                    self.animation.switch("right")
 
         np_rectx = self.animation.rect.copy()
         np_rectx.x += dis.x

@@ -65,14 +65,14 @@ class Player(Entity):
         np_rectx.x += dis.x
 
         if self.game_manager.check_collision(np_rectx):
-            dis.x = self._snap_to_grid(dis.x)
+            self.position.x = self._snap_to_grid(self.position.x)
         else:
             self.position.x += dis.x
 
         np_recty = self.animation.rect.copy()
         np_recty.y += dis.y
         if self.game_manager.check_collision(np_recty):
-            dis.y = self._snap_to_grid(dis.y)
+            self.position.y = self._snap_to_grid(self.position.y)
         else:
             self.position.y += dis.y
 

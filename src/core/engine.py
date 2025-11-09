@@ -5,19 +5,22 @@ from .services import scene_manager, input_manager
 
 from src.scenes.menu_scene import MenuScene
 from src.scenes.game_scene import GameScene
+from src.scenes.setting_scene import SettingsScene
+
 
 class Engine:
-
-    screen: pg.Surface              # Screen Display of the Game
-    clock: pg.time.Clock            # Clock for FPS control
-    running: bool                   # Running state of the game
+    screen: pg.Surface  # Screen Display of the Game
+    clock: pg.time.Clock  # Clock for FPS control
+    running: bool  # Running state of the game
 
     def __init__(self):
         Logger.info("Initializing Engine")
 
         pg.init()
 
-        self.screen = pg.display.set_mode((GameSettings.SCREEN_WIDTH, GameSettings.SCREEN_HEIGHT))
+        self.screen = pg.display.set_mode(
+            (GameSettings.SCREEN_WIDTH, GameSettings.SCREEN_HEIGHT)
+        )
         self.clock = pg.time.Clock()
         self.running = True
 
@@ -25,10 +28,11 @@ class Engine:
 
         scene_manager.register_scene("menu", MenuScene())
         scene_manager.register_scene("game", GameScene())
-        '''
+        """
         [TODO HACKATHON 5]
         Register the setting scene here
-        '''
+        """
+        scene_manager.register_scene("settings", SettingsScene())
         scene_manager.change_scene("menu")
 
     def run(self):
@@ -51,6 +55,6 @@ class Engine:
         scene_manager.update(dt)
 
     def render(self):
-        self.screen.fill((0, 0, 0))     # Make sure the display is cleared
-        scene_manager.draw(self.screen) # Draw the current scene
-        pg.display.flip()               # Render the display
+        self.screen.fill((0, 0, 0))  # Make sure the display is cleared
+        scene_manager.draw(self.screen)  # Draw the current scene
+        pg.display.flip()  # Render the display

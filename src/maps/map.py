@@ -3,6 +3,7 @@ import pytmx
 
 from src.utils import load_tmx, Position, GameSettings, PositionCamera, Teleport
 
+
 class Map:
     # Map Properties
     path_name: str
@@ -34,25 +35,35 @@ class Map:
 
     def draw(self, screen: pg.Surface, camera: PositionCamera):
         screen.blit(self._surface, camera.transform_position(Position(0, 0)))
-        
+
         # Draw the hitboxes collision map
         if GameSettings.DRAW_HITBOXES:
             for rect in self._collision_map:
                 pg.draw.rect(screen, (255, 0, 0), camera.transform_rect(rect), 1)
-        
+
     def check_collision(self, rect: pg.Rect) -> bool:
-        '''
+        """
         [TODO HACKATHON 4]
         Return True if collide if rect param collide with self._collision_map
         Hint: use API colliderect and iterate each rectangle to check
-        '''
+        """
+        for collision_rect in self._collision_map:
+            if rect.colliderect(collision_rect):
+                return True
         return False
-        
+
     def check_teleport(self, pos: Position) -> Teleport | None:
-        '''[TODO HACKATHON 6] 
+        """[TODO HACKATHON 6]
         Teleportation: Player can enter a building by walking into certain tiles defined inside saves/*.json, and the map will be changed
-        Hint: Maybe there is an way to switch the map using something from src/core/managers/game_manager.py called switch_... 
-        '''
+        Hint: Maybe there is an way to switch the map using something from src/core/managers/game_manager.py called switch_...
+        """
+        tile_x = pos.x // GameSettings.TILE_SIZE
+        tile_y = pos.y // GameSettings.TILE_SIZE
+
+        for teleporter in self.teleporters:
+            if teleporter.pos.x == tile_x and teleporter.pos.y == tile_y:
+                return teleporter
+
         return None
 
     def _render_all_layers(self, target: pg.Surface) -> None:
@@ -61,8 +72,10 @@ class Map:
                 self._render_tile_layer(target, layer)
             # elif isinstance(layer, pytmx.TiledImageLayer) and layer.image:
             #     target.blit(layer.image, (layer.x or 0, layer.y or 0))
- 
-    def _render_tile_layer(self, target: pg.Surface, layer: pytmx.TiledTileLayer) -> None:
+
+    def _render_tile_layer(
+        self, target: pg.Surface, layer: pytmx.TiledTileLayer
+    ) -> None:
         for x, y, gid in layer:
             if gid == 0:
                 continue
@@ -70,28 +83,42 @@ class Map:
             if image is None:
                 continue
 
-            image = pg.transform.scale(image, (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE))
+            image = pg.transform.scale(
+                image, (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+            )
             target.blit(image, (x * GameSettings.TILE_SIZE, y * GameSettings.TILE_SIZE))
-    
+
     def _create_collision_map(self) -> list[pg.Rect]:
         rects = []
         for layer in self.tmxdata.visible_layers:
-            if isinstance(layer, pytmx.TiledTileLayer) and ("collision" in layer.name.lower() or "house" in layer.name.lower()):
+            if isinstance(layer, pytmx.TiledTileLayer) and (
+                "collision" in layer.name.lower() or "house" in layer.name.lower()
+            ):
                 for x, y, gid in layer:
                     if gid != 0:
-                        '''
+                        """
                         [TODO HACKATHON 4]
                         rects.append(pg.Rect(...))
                         Append the collision rectangle to the rects[] array
                         Remember scale the rectangle with the TILE_SIZE from settings
-                        '''
-                        pass
+                        """
+                        rects.append(
+                            pg.Rect(
+                                x * GameSettings.TILE_SIZE,
+                                y * GameSettings.TILE_SIZE,
+                                GameSettings.TILE_SIZE,
+                                GameSettings.TILE_SIZE,
+                            )
+                        )
         return rects
 
     @classmethod
     def from_dict(cls, data: dict) -> "Map":
         tp = [Teleport.from_dict(t) for t in data["teleport"]]
-        pos = Position(data["player"]["x"] * GameSettings.TILE_SIZE, data["player"]["y"] * GameSettings.TILE_SIZE)
+        pos = Position(
+            data["player"]["x"] * GameSettings.TILE_SIZE,
+            data["player"]["y"] * GameSettings.TILE_SIZE,
+        )
         return cls(data["path"], tp, pos)
 
     def to_dict(self):
@@ -101,5 +128,5 @@ class Map:
             "player": {
                 "x": self.spawn.x // GameSettings.TILE_SIZE,
                 "y": self.spawn.y // GameSettings.TILE_SIZE,
-            }
+            },
         }

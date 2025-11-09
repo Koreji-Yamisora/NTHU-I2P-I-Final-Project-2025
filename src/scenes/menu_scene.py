@@ -7,23 +7,38 @@ from src.interface.components import Button
 from src.core.services import scene_manager, sound_manager, input_manager
 from typing import override
 
+
 class MenuScene(Scene):
     # Background Image
     background: BackgroundSprite
     # Buttons
     play_button: Button
-    
+    settings_button: Button
+
     def __init__(self):
         super().__init__()
         self.background = BackgroundSprite("backgrounds/background1.png")
 
         px, py = GameSettings.SCREEN_WIDTH // 2, GameSettings.SCREEN_HEIGHT * 3 // 4
         self.play_button = Button(
-            "UI/button_play.png", "UI/button_play_hover.png",
-            px + 50, py, 100, 100,
-            lambda: scene_manager.change_scene("game")
+            "UI/button_play.png",
+            "UI/button_play_hover.png",
+            px + 50,
+            py,
+            100,
+            100,
+            lambda: scene_manager.change_scene("game"),
         )
-        
+        self.settings_button = Button(
+            "UI/button_setting.png",
+            "UI/button_setting_hover.png",
+            px - 150,
+            py,
+            100,
+            100,
+            lambda: scene_manager.change_scene("settings"),
+        )
+
     @override
     def enter(self) -> None:
         sound_manager.play_bgm("RBY 101 Opening (Part 1).ogg")
@@ -39,8 +54,10 @@ class MenuScene(Scene):
             scene_manager.change_scene("game")
             return
         self.play_button.update(dt)
+        self.settings_button.update(dt)
 
     @override
     def draw(self, screen: pg.Surface) -> None:
         self.background.draw(screen)
         self.play_button.draw(screen)
+        self.settings_button.draw(screen)

@@ -73,6 +73,51 @@ class GameManager:
         self.next_map = target
         self.should_change_scene = True
 
+    def teleport_on_same_map(self, teleporter: Teleport) -> None:
+        """Teleport the player within the same map using tp_des or spawn."""
+        if not self.player:
+            return
+
+        destination_pos = None
+
+        # Use tp_des if set, otherwise use spawn
+        if teleporter.tp_des:
+            destination_pos = teleporter.tp_des
+        else:
+            destination_pos = self.current_map.spawn
+            if self.current_map_key in self.player_spawns:
+                destination_pos = self.player_spawns[self.current_map_key]
+
+        offset_x = 0
+        offset_y = 0
+
+        if self.player.direction == Direction.DOWN:
+            offset_y = GameSettings.TILE_SIZE
+        elif self.player.direction == Direction.UP:
+            offset_y = -GameSettings.TILE_SIZE
+        elif self.player.direction == Direction.RIGHT:
+            offset_x = GameSettings.TILE_SIZE
+        elif self.player.direction == Direction.LEFT:
+            offset_x = -GameSettings.TILE_SIZE
+
+        offset_pos = Position(
+            destination_pos.x + offset_x, destination_pos.y + offset_y
+        )
+
+        test_rect = pg.Rect(
+            offset_pos.x,
+            offset_pos.y,
+            GameSettings.TILE_SIZE,
+            GameSettings.TILE_SIZE,
+        )
+
+        if not self.check_collision(test_rect):
+            self.player.position = offset_pos
+        else:
+            self.player.position = destination_pos.copy()
+
+        self.player.animation.update_pos(self.player.position)
+
     def try_switch_map(self) -> None:
         if self.should_change_scene:
             self.current_map_key = self.next_map
@@ -80,60 +125,44 @@ class GameManager:
             self.should_change_scene = False
             if self.player:
                 destination_map = self.maps[self.current_map_key]
-                
-                # Try to find a teleporter pointing back to where we came from
-                teleporter_pos = None
-                if self.previous_map:
-                    for teleporter in destination_map.teleporters:
-                        if teleporter.destination == self.previous_map:
-                            teleporter_pos = teleporter.pos
-                            break
-                
-                # If teleporter found, try offset in player direction first
-                # If that collides, use teleporter position (no offset)
-                if teleporter_pos:
-                    # Calculate offset in player's facing direction
+
+                tpx = None
+
+                for teleporter in destination_map.teleporters:
+                    if teleporter.destination == self.previous_map:
+                        tpx = teleporter
+                        break
+
+                if tpx and tpx.pos:
                     offset_x = 0
                     offset_y = 0
-                    
+
                     if self.player.direction == Direction.DOWN:
-                        offset_y = GameSettings.TILE_SIZE  # Exit below teleporter
+                        offset_y = GameSettings.TILE_SIZE
                     elif self.player.direction == Direction.UP:
-                        offset_y = -GameSettings.TILE_SIZE  # Exit above teleporter
+                        offset_y = -GameSettings.TILE_SIZE
                     elif self.player.direction == Direction.RIGHT:
-                        offset_x = GameSettings.TILE_SIZE  # Exit to the right of teleporter
+                        offset_x = GameSettings.TILE_SIZE
                     elif self.player.direction == Direction.LEFT:
-                        offset_x = -GameSettings.TILE_SIZE  # Exit to the left of teleporter
-                    # If direction is NONE, no offset (use teleporter position)
-                    
-                    # Calculate the offset position
-                    offset_pos = Position(
-                        teleporter_pos.x + offset_x,
-                        teleporter_pos.y + offset_y
-                    )
-                    
-                    # Create a test rect to check collision
+                        offset_x = -GameSettings.TILE_SIZE
+                    offset_pos = Position(tpx.pos.x + offset_x, tpx.pos.y + offset_y)
+
                     test_rect = pg.Rect(
                         offset_pos.x,
                         offset_pos.y,
                         GameSettings.TILE_SIZE,
-                        GameSettings.TILE_SIZE
+                        GameSettings.TILE_SIZE,
                     )
-                    
-                    # Use offset position if it's safe (no collision)
-                    # Otherwise use teleporter position directly (no offset)
+
                     if not self.check_collision(test_rect):
                         self.player.position = offset_pos
                     else:
-                        # If player direction has collision, use teleporter position (no offset)
-                        self.player.position = teleporter_pos.copy()
+                        self.player.position = tpx.pos.copy()
                 else:
                     spawn_pos = destination_map.spawn
                     if self.current_map_key in self.player_spawns:
                         spawn_pos = self.player_spawns[self.current_map_key]
                     self.player.position = spawn_pos
-                
-                # Update animation position immediately after teleporting
                 self.player.animation.update_pos(self.player.position)
 
     def check_collision(self, rect: pg.Rect) -> bool:
@@ -207,6 +236,7 @@ class GameManager:
                 player_spawns[path] = Position(
                     sp["x"] * GameSettings.TILE_SIZE, sp["y"] * GameSettings.TILE_SIZE
                 )
+
         current_map = data["current_map"]
         gm = cls(
             maps,

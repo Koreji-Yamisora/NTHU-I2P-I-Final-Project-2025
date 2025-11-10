@@ -103,7 +103,11 @@ class Player(Entity):
             tp = self.game_manager.current_map.check_teleport(self.animation.rect)
             if tp:
                 dest = tp.destination
-                self.game_manager.switch_map(dest)
+                # Check if teleporting on the same map
+                if dest == self.game_manager.current_map_key:
+                    self.game_manager.teleport_on_same_map(tp)
+                else:
+                    self.game_manager.switch_map(dest)
                 self.tp_cooldown = 0.5
 
         super().update(dt)

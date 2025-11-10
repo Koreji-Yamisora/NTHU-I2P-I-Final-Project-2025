@@ -87,6 +87,50 @@ class Teleport:
         )
 
 
+@dataclass
+class Warp:
+    source: Position
+    destination: Position
+
+    @overload
+    def __init__(
+        self, source_x: int, source_y: int, dest_x: int, dest_y: int
+    ) -> None: ...
+    @overload
+    def __init__(self, source: Position, destination: Position) -> None: ...
+
+    def __init__(self, *args, **kwargs):
+        if isinstance(args[0], Position):
+            self.source = args[0]
+            self.destination = args[1]
+        else:
+            if len(args) == 4:
+                source_x, source_y, dest_x, dest_y = args[0], args[1], args[2], args[3]
+            else:
+                raise ValueError(
+                    "Warp requires 4 arguments: source_x, source_y, dest_x, dest_y"
+                )
+            self.source = Position(source_x, source_y)
+            self.destination = Position(dest_x, dest_y)
+
+    def to_dict(self):
+        return {
+            "source_x": self.source.x // GameSettings.TILE_SIZE,
+            "source_y": self.source.y // GameSettings.TILE_SIZE,
+            "dest_x": self.destination.x // GameSettings.TILE_SIZE,
+            "dest_y": self.destination.y // GameSettings.TILE_SIZE,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            data["source_x"] * GameSettings.TILE_SIZE,
+            data["source_y"] * GameSettings.TILE_SIZE,
+            data["dest_x"] * GameSettings.TILE_SIZE,
+            data["dest_y"] * GameSettings.TILE_SIZE,
+        )
+
+
 class Monster(TypedDict):
     name: str
     hp: int
@@ -99,4 +143,3 @@ class Item(TypedDict):
     name: str
     count: int
     sprite_path: str
-

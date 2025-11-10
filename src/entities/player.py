@@ -27,7 +27,7 @@ class Player(Entity):
         [TODO HACKATHON 4]
         Check if there is collision, if so try to make the movement smooth
         Hint #1 : use entity.py _snap_to_grid function or create a similar function
-        Hint #2 : Beware of glitchy teleportation, you must do
+        Hint #2 : Beware of glitchy movement, you must do
                     1. Update X
                     2. If collide, snap to grid
                     3. Update Y
@@ -94,21 +94,22 @@ class Player(Entity):
         else:
             self.position.y += dis.y
 
-        # Check teleportation
         if self.tp_cooldown > 0:
             self.tp_cooldown -= dt
         elif self.tp_cooldown <= 0:
-            # Update animation position before checking teleport to ensure rect is current
             self.animation.update_pos(self.position)
-            tp = self.game_manager.current_map.check_teleport(self.animation.rect)
-            if tp:
-                dest = tp.destination
-                # Check if teleporting on the same map
-                if dest == self.game_manager.current_map_key:
-                    self.game_manager.teleport_on_same_map(tp)
-                else:
-                    self.game_manager.switch_map(dest)
+
+            warp = self.game_manager.current_map.check_warp(self.animation.rect)
+            if warp:
+                self.game_manager.warp(warp)
                 self.tp_cooldown = 0.5
+            else:
+                tp = self.game_manager.current_map.check_teleport(self.animation.rect)
+                if tp:
+                    dest = tp.destination
+                    if dest != self.game_manager.current_map_key:
+                        self.game_manager.switch_map(dest)
+                        self.tp_cooldown = 0.5
 
         super().update(dt)
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from src.utils import Logger, GameSettings, Position, Teleport, Direction
+from src.utils import Logger, GameSettings, Position, Teleport, Direction, Warp
 import json, os
 import pygame as pg
 from typing import TYPE_CHECKING
@@ -25,7 +25,7 @@ class GameManager:
     # Changing Scene properties
     should_change_scene: bool
     next_map: str
-    previous_map: str  # Store the map we came from for teleport positioning
+    previous_map: str
 
     def __init__(
         self,
@@ -73,21 +73,11 @@ class GameManager:
         self.next_map = target
         self.should_change_scene = True
 
-    def teleport_on_same_map(self, teleporter: Teleport) -> None:
-        """Teleport the player within the same map using tp_des or spawn."""
+    def warp(self, warp: Warp) -> None:
         if not self.player:
             return
 
-        destination_pos = None
-
-        # Use tp_des if set, otherwise use spawn
-        if teleporter.tp_des:
-            destination_pos = teleporter.tp_des
-        else:
-            destination_pos = self.current_map.spawn
-            if self.current_map_key in self.player_spawns:
-                destination_pos = self.player_spawns[self.current_map_key]
-
+        destination_pos = warp.destination.copy()
         offset_x = 0
         offset_y = 0
 

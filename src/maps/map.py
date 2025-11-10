@@ -1,7 +1,7 @@
 import pygame as pg
 import pytmx
 
-from src.utils import load_tmx, Position, GameSettings, PositionCamera, Teleport
+from src.utils import load_tmx, Position, GameSettings, PositionCamera, Teleport, Warp
 
 
 class Map:
@@ -11,15 +11,17 @@ class Map:
     # Position Argument
     spawn: Position
     teleporters: list[Teleport]
+    warps: list[Warp]
     # Rendering Properties
     _surface: pg.Surface
     _collision_map: list[pg.Rect]
 
-    def __init__(self, path: str, tp: list[Teleport], spawn: Position):
+    def __init__(self, path: str, tp: list[Teleport], spawn: Position, warps: list[Warp] | None = None):
         self.path_name = path
         self.tmxdata = load_tmx(path)
         self.spawn = spawn
         self.teleporters = tp
+        self.warps = warps if warps is not None else []
 
         pixel_w = self.tmxdata.width * GameSettings.TILE_SIZE
         pixel_h = self.tmxdata.height * GameSettings.TILE_SIZE
@@ -53,10 +55,6 @@ class Map:
         return False
 
     def check_teleport(self, rect: pg.Rect) -> Teleport | None:
-        """[TODO HACKATHON 6]
-        Teleportation: Player can enter a building by walking into certain tiles defined inside saves/*.json, and the map will be changed
-        Hint: Maybe there is an way to switch the map using something from src/core/managers/game_manager.py called switch_...
-        """
         for teleporter in self.teleporters:
             tp_rect = pg.Rect(
                 teleporter.pos.x,
@@ -67,6 +65,20 @@ class Map:
 
             if rect.colliderect(tp_rect):
                 return teleporter
+
+        return None
+
+    def check_warp(self, rect: pg.Rect) -> Warp | None:
+        for warp in self.warps:
+            warp_rect = pg.Rect(
+                warp.source.x,
+                warp.source.y,
+                GameSettings.TILE_SIZE,
+                GameSettings.TILE_SIZE,
+            )
+
+            if rect.colliderect(warp_rect):
+                return warp
 
         return None
 
@@ -123,12 +135,14 @@ class Map:
             data["player"]["x"] * GameSettings.TILE_SIZE,
             data["player"]["y"] * GameSettings.TILE_SIZE,
         )
-        return cls(data["path"], tp, pos)
+        warps = [Warp.from_dict(w) for w in data.get("warps", [])]
+        return cls(data["path"], tp, pos, warps)
 
     def to_dict(self):
         return {
             "path": self.path_name,
             "teleport": [t.to_dict() for t in self.teleporters],
+            "warps": [w.to_dict() for w in self.warps],
             "player": {
                 "x": self.spawn.x // GameSettings.TILE_SIZE,
                 "y": self.spawn.y // GameSettings.TILE_SIZE,

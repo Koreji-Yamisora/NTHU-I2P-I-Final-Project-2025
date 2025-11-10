@@ -47,34 +47,26 @@ class PositionCamera:
 class Teleport:
     pos: Position
     destination: str
-    one_way: bool
 
     @overload
-    def __init__(self, x: int, y: int, destination: str, one_way=False) -> None: ...
+    def __init__(self, x: int, y: int, destination: str) -> None: ...
     @overload
-    def __init__(self, pos: Position, destination: str, one_way=False) -> None: ...
+    def __init__(self, pos: Position, destination: str) -> None: ...
 
     def __init__(self, *args, **kwargs):
         if isinstance(args[0], Position):
             self.pos = args[0]
             self.destination = args[1]
-            self.one_way = args[2] if len(args) > 2 else kwargs.get("one_way", False)
         else:
-            if len(args) >= 4:
-                x, y, dest, one_way = args[0], args[1], args[2], args[3]
-            else:
-                x, y, dest = args[0], args[1], args[2]
-                one_way = kwargs.get("one_way", False)
+            x, y, dest = args[0], args[1], args[2]
             self.pos = Position(x, y)
             self.destination = dest
-            self.one_way = one_way
 
     def to_dict(self):
         return {
             "x": self.pos.x // GameSettings.TILE_SIZE,
             "y": self.pos.y // GameSettings.TILE_SIZE,
             "destination": self.destination,
-            "one_way": self.one_way,
         }
 
     @classmethod
@@ -83,7 +75,6 @@ class Teleport:
             data["x"] * GameSettings.TILE_SIZE,
             data["y"] * GameSettings.TILE_SIZE,
             data["destination"],
-            data.get("one_way", False),
         )
 
 

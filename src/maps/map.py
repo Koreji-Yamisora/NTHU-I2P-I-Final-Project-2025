@@ -16,7 +16,13 @@ class Map:
     _surface: pg.Surface
     _collision_map: list[pg.Rect]
 
-    def __init__(self, path: str, tp: list[Teleport], spawn: Position, warps: list[Warp] | None = None):
+    def __init__(
+        self,
+        path: str,
+        tp: list[Teleport],
+        spawn: Position,
+        warps: list[Warp] | None = None,
+    ):
         self.path_name = path
         self.tmxdata = load_tmx(path)
         self.spawn = spawn

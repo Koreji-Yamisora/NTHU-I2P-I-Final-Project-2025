@@ -29,8 +29,7 @@
         {
           "x": 24,
           "y": 23,
-          "destination": "gym.tmx",
-          "one_way": true
+          "destination": "gym.tmx"
         }
       ],
       "player": {

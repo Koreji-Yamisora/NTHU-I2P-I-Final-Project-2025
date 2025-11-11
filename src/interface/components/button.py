@@ -6,6 +6,7 @@ from src.core.services import input_manager
 from src.utils import Logger
 from typing import Callable, override
 from .component import UIComponent
+from src.utils import Position
 
 
 class Button(UIComponent):
@@ -57,8 +58,7 @@ class Button(UIComponent):
         if self.hitbox.collidepoint(input_manager.mouse_pos):
             if input_manager.mouse_pressed(1) and self.on_click is not None:
                 self.on_click()
-            else:
-                self.img_button = self.img_button_hover
+            self.img_button = self.img_button_hover
         else:
             self.img_button = self.img_button_default
 
@@ -68,61 +68,139 @@ class Button(UIComponent):
         [TODO HACKATHON 1]
         You might want to change this too
         """
-        screen.blit(self.img_button.image, self.hitbox)
+        self.img_button.rect.topleft = self.hitbox.topleft
+        self.img_button.draw(screen)
 
 
-def main():
-    import sys
-    import os
+class ToggleButton(UIComponent):
+    off_button: Sprite
+    on_button: Sprite
+    selected: Sprite
+    hitbox: pg.Rect
+    state: bool
 
-    pg.init()
+    def __init__(
+        self, off_button, on_button, selected, x, y, width, height, state: bool = False
+    ):
+        self.off_button = Sprite(off_button, (width, height))
+        self.on_button = Sprite(on_button, (width, height))
+        self.selected = Sprite(selected, (width, height))
+        self.hitbox = pg.Rect(x, y, width, height)
+        self.state = state
 
-    WIDTH, HEIGHT = 800, 800
-    screen = pg.display.set_mode((WIDTH, HEIGHT))
-    pg.display.set_caption("Button Test")
-    clock = pg.time.Clock()
+    def toggle(self):
+        self.state = not self.state
 
-    bg_color = (0, 0, 0)
+    @override
+    def update(self, dt: float) -> None:
+        if self.hitbox.collidepoint(input_manager.mouse_pos):
+            if input_manager.mouse_pressed(1):
+                self.toggle()
 
-    def on_button_click():
-        nonlocal bg_color
-        if bg_color == (0, 0, 0):
-            bg_color = (255, 255, 255)
+    @override
+    def draw(self, screen: pg.Surface) -> None:
+        # keep sprites aligned with hitbox
+        self.on_button.rect.topleft = self.hitbox.topleft
+        self.off_button.rect.topleft = self.hitbox.topleft
+        self.selected.rect.topleft = self.hitbox.topleft
+        if self.state:
+            self.on_button.draw(screen)
         else:
-            bg_color = (0, 0, 0)
-
-    button = Button(
-        img_path="UI/button_play.png",
-        img_hovered_path="UI/button_play_hover.png",
-        x=WIDTH // 2 - 50,
-        y=HEIGHT // 2 - 50,
-        width=100,
-        height=100,
-        on_click=on_button_click,
-    )
-
-    running = True
-    dt = 0
-
-    while running:
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                running = False
-            input_manager.handle_events(event)
-
-        dt = clock.tick(60) / 1000.0
-        button.update(dt)
-
-        input_manager.reset()
-
-        _ = screen.fill(bg_color)
-
-        button.draw(screen)
-
-        pg.display.flip()
-
-    pg.quit()
+            self.off_button.draw(screen)
+        if self.hitbox.collidepoint(input_manager.mouse_pos):
+            self.selected.draw(screen)
 
 
-if __name__ == "__main__":
-    main()
+class Slider(UIComponent):
+    state: float
+    rect: pg.Rect
+    button: Sprite
+    active_bar: Sprite
+    bar: Sprite
+    is_dragging: bool
+    _drag_offset: int
+    action: Callable[[float], None] | None = None
+
+    def __init__(
+        self,
+        button,
+        bar,
+        active_bar,
+        highlight,
+        x,
+        y,
+        width,
+        height,
+        width_b,
+        height_b,
+        state: float = 0.5,
+        action: Callable[[float], None] | None = None,
+    ):
+        self.rect = pg.Rect(x, y, width, height)
+        self.bar = Sprite(bar, (width, height))
+        self.active_bar = Sprite(active_bar, (width, height))
+        self.button = Sprite(button, (width_b, height_b))
+        self.highlight = Sprite(highlight, (width_b, height_b))
+        self.bar.rect.center = (x, y)
+        self.active_bar.rect.center = (x, y)
+        self.state = max(0.0, min(1.0, state))
+        self.is_dragging = False
+        self._drag_offset = 0
+        self.button_helper(0, self.bar.rect.centery)
+        self.action = action
+        self._sync_from_state()
+
+    def button_helper(self, pos_x: int, pos_y: int | None = None):
+        self.button.rect.centerx = pos_x
+        self.highlight.rect.centerx = pos_x
+        if pos_y:
+            self.button.rect.centery = pos_y
+            self.highlight.rect.centery = pos_y
+
+    def _clamp_state(self) -> None:
+        self.state = max(0.0, min(1.0, self.state))
+
+    def _sync_from_state(self) -> None:
+        bar_left = self.bar.rect.left
+        bar_right = self.bar.rect.right
+        bar_width = bar_right - bar_left
+        center_x = bar_left + int(self.state * bar_width)
+        self.button_helper(center_x, self.bar.rect.centery)
+        self.active_bar.rect.width = max(0, center_x - bar_left)
+
+    def _sync_from_pos(self, mouse_center_x: int) -> None:
+        bar_left = self.bar.rect.left
+        bar_right = self.bar.rect.right
+        mouse_center_x = max(bar_left, min(mouse_center_x, bar_right))
+        bar_width = bar_right - bar_left
+        self.state = (mouse_center_x - bar_left) / bar_width
+        self._clamp_state()
+        if self.action:
+            self.action(self.state)
+
+    @override
+    def update(self, dt: float) -> None:
+        mouse_x, mouse_y = input_manager.mouse_pos
+        if input_manager.mouse_pressed(1):
+            if self.button.rect.collidepoint(mouse_x, mouse_y):
+                self.is_dragging = True
+                self._drag_offset = mouse_x - self.button.rect.centerx
+            elif self.bar.rect.collidepoint(mouse_x, mouse_y):
+                self._sync_from_pos(mouse_x)
+                self._sync_from_state()
+        if input_manager.mouse_released(1):
+            self.is_dragging = False
+        if self.is_dragging:
+            self._sync_from_pos(mouse_x - self._drag_offset)
+            self._sync_from_state()
+        else:
+            self._sync_from_state()
+
+    @override
+    def draw(self, screen: pg.Surface) -> None:
+        self.bar.draw(screen)
+        self.active_bar.draw(screen)
+        if self.is_dragging:
+            self.highlight.draw(screen)
+        else:
+            self.button.draw(screen)

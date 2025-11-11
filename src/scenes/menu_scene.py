@@ -4,7 +4,12 @@ from src.utils import GameSettings
 from src.sprites import BackgroundSprite
 from src.scenes.scene import Scene
 from src.interface.components import Button
-from src.core.services import scene_manager, sound_manager, input_manager
+from src.core.services import (
+    scene_manager,
+    sound_manager,
+    input_manager,
+    resource_manager,
+)
 from typing import override
 
 
@@ -20,6 +25,10 @@ class MenuScene(Scene):
         self.background = BackgroundSprite("backgrounds/background1.png")
 
         px, py = GameSettings.SCREEN_WIDTH // 2, GameSettings.SCREEN_HEIGHT * 3 // 4
+        font = resource_manager.get_font("Pokemon solid.ttf", 82)
+        self.title = font.render("POKEMON???", True, (255, 64, 32))
+        self.title_rect = self.title.get_rect(center=(px, py - 300))
+
         self.play_button = Button(
             "UI/button_play.png",
             "UI/button_play_hover.png",
@@ -59,5 +68,6 @@ class MenuScene(Scene):
     @override
     def draw(self, screen: pg.Surface) -> None:
         self.background.draw(screen)
+        screen.blit(self.title, self.title_rect)
         self.play_button.draw(screen)
         self.settings_button.draw(screen)

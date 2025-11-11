@@ -1,7 +1,8 @@
 from __future__ import annotations
 import pygame as pg
 from src.interface.components import Overlay, Button, Slider
-from src.core.services import sound_manager
+from src.core.services import sound_manager, resource_manager
+from src.core.managers import GameManager
 from src.utils import GameSettings, Logger
 from typing import Callable
 from src.sprites import Sprite
@@ -9,9 +10,13 @@ from src.sprites import Sprite
 
 class SettingOverlay(Overlay):
     bg: Sprite
+    game_manager: GameManager
 
-    def __init__(self, on_close: Callable[[], None] | None = None):
-        super().__init__(on_close, overlay_alpha=128)
+    def __init__(
+        self, game_manager: GameManager, on_close: Callable[[], None] | None = None
+    ):
+        super().__init__(game_manager, on_close=on_close, overlay_alpha=128)
+        self.game_manager = game_manager
 
         # Back button
         back_button = Button(
@@ -41,6 +46,17 @@ class SettingOverlay(Overlay):
             GameSettings.SCREEN_HEIGHT // 2,
         )
 
+        # Volume Label
+
+        cx, cy = self.bg.rect.center
+        font = resource_manager.get_font("Minecraft.ttf", 24)
+        text_color = (255, 255, 255)
+        self.volume_label = font.render("Volume", True, text_color)
+        self.volume_label_pos = (
+            (cx + wi * 15) // 2 - self.volume_label.get_width() // 2,
+            270,
+        )
+
         # Volume Slider
         def set_vol(state):
             GameSettings.AUDIO_VOLUME = state
@@ -48,25 +64,53 @@ class SettingOverlay(Overlay):
                 sound_manager.current_bgm.set_volume(state)
 
         ax, ay = self.bgx // 100, self.bgy // 100
-        cx, cy = self.bg.rect.center
         self.volume_slider = Slider(
             "UI/raw/UI_Flat_FrameSlot03b.png",
             "UI/raw/UI_Flat_BarFill01g.png",
             "UI/raw/UI_Flat_BarFill01e.png",
             "UI/raw/UI_Flat_FrameSlot03a.png",
-            cx,
-            cy,
-            ax * 70,
-            ay * 34,
-            ax * 3,
+            (cx + wi * 15) // 2,
+            cy - 150,
+            ax * 30,
+            ay * 2.5,
+            ax * 2,
             ay * 5,
             GameSettings.AUDIO_VOLUME,
             action=set_vol,
         )
+        self.save_button = Button(
+            "UI/button_save.png",
+            "UI/button_save_hover.png",
+            GameSettings.SCREEN_WIDTH // 2 - 50,
+            GameSettings.SCREEN_HEIGHT - 50,
+            100,
+            100,
+            lambda: self.game_manager.save("saves/game0.json"),
+        )
+        self.add_button(self.save_button)
+
+        self.load_button = Button(
+            "UI/button_load.png",
+            "UI/button_load_hover.png",
+            GameSettings.SCREEN_WIDTH // 2 + 50,
+            GameSettings.SCREEN_HEIGHT - 50,
+            100,
+            100,
+            lambda: self.load(),
+        )
+        self.add_button(self.load_button)
+
+    def load(self):
+        manager = GameManager.load("saves/game0.json")
+        if manager is None:
+            Logger.error("Failed to load game manager")
+            exit(1)
+        self.game_manager = manager
 
     def update_content(self, dt: float) -> None:
         self.volume_slider.update(dt)
 
     def draw_content(self, screen: pg.Surface) -> None:
         self.bg.draw(screen)
+        screen.blit(self.volume_label, self.volume_label_pos)
         self.volume_slider.draw(screen)

@@ -55,7 +55,7 @@ class GameScene(Scene):
         )
 
         self.setting_overlay = Overlay.SettingOverlay(
-            on_close=lambda: self.setting_overlay.close()
+            self.game_manager, on_close=lambda: self.setting_overlay.close()
         )
         self.db = 0.0
 
@@ -76,7 +76,7 @@ class GameScene(Scene):
             importlib.reload(Overlay)
             was_open = self.setting_overlay.is_open
             self.setting_overlay = Overlay.SettingOverlay(
-                on_close=lambda: self.setting_overlay.close()
+                self.game_manager, on_close=lambda: self.setting_overlay.close()
             )
             if was_open:
                 Logger.info("Reloaded overlay")
@@ -87,18 +87,17 @@ class GameScene(Scene):
             importlib.reload(Overlay)
             was_open = self.setting_overlay.is_open
             self.setting_overlay = Overlay.SettingOverlay(
-                on_close=lambda: self.setting_overlay.close()
+                self.game_manager, on_close=lambda: self.setting_overlay.close()
             )
             if was_open:
+                Logger.info("Reloaded overlay")
                 self.setting_overlay.open()
             self.db = 3.0
 
-        # Check if there is assigned next scene
         self.game_manager.try_switch_map()
 
         if not self.setting_overlay.is_open:
             self.menu_button.update(dt)
-        # Update player and other data
         if self.game_manager.player:
             self.game_manager.player.update(dt)
         for enemy in self.game_manager.current_enemy_trainers:
@@ -106,7 +105,6 @@ class GameScene(Scene):
         if self.setting_overlay.is_open:
             self.setting_overlay.update(dt)
 
-        # Update others
         self.game_manager.bag.update(dt)
 
         if self.game_manager.player is not None and self.online_manager is not None:

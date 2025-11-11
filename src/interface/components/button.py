@@ -125,7 +125,7 @@ class Slider(UIComponent):
         self,
         button,
         bar,
-        active_bar,
+        active_bar_img,
         highlight,
         x,
         y,
@@ -138,7 +138,8 @@ class Slider(UIComponent):
     ):
         self.rect = pg.Rect(x, y, width, height)
         self.bar = Sprite(bar, (width, height))
-        self.active_bar = Sprite(active_bar, (width, height))
+        self._active_bar_img = active_bar_img
+        self.active_bar = Sprite(active_bar_img, (width, height))
         self.button = Sprite(button, (width_b, height_b))
         self.highlight = Sprite(highlight, (width_b, height_b))
         self.bar.rect.center = (x, y)
@@ -166,7 +167,12 @@ class Slider(UIComponent):
         bar_width = bar_right - bar_left
         center_x = bar_left + int(self.state * bar_width)
         self.button_helper(center_x, self.bar.rect.centery)
-        self.active_bar.rect.width = max(0, center_x - bar_left)
+        new_width = max(0, center_x - bar_left)
+        self.active_bar = Sprite(
+            self._active_bar_img, (new_width, self.bar.rect.height)
+        )
+        self.active_bar.rect.centery = self.bar.rect.centery
+        self.active_bar.rect.left = self.bar.rect.left
 
     def _sync_from_pos(self, mouse_center_x: int) -> None:
         bar_left = self.bar.rect.left
@@ -182,7 +188,9 @@ class Slider(UIComponent):
     def update(self, dt: float) -> None:
         mouse_x, mouse_y = input_manager.mouse_pos
         if input_manager.mouse_pressed(1):
-            if self.button.rect.collidepoint(mouse_x, mouse_y):
+            if self.button.rect.collidepoint(
+                mouse_x, mouse_y
+            ) or self.highlight.rect.collidepoint(mouse_x, mouse_y):
                 self.is_dragging = True
                 self._drag_offset = mouse_x - self.button.rect.centerx
             elif self.bar.rect.collidepoint(mouse_x, mouse_y):

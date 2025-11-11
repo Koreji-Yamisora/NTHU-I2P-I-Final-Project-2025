@@ -4,6 +4,7 @@ from typing import Callable, override
 from .component import UIComponent
 from .button import Button
 from src.utils import GameSettings
+from src.core.managers.game_manager import GameManager
 
 
 class Overlay(UIComponent):
@@ -20,6 +21,7 @@ class Overlay(UIComponent):
 
     def __init__(
         self,
+        game_manager: GameManager,
         on_close: Callable[[], None] | None = None,
         overlay_alpha: int | None = None,
     ):

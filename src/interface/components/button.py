@@ -75,18 +75,27 @@ class Button(UIComponent):
 class ToggleButton(UIComponent):
     off_button: Sprite
     on_button: Sprite
-    selected: Sprite
     hitbox: pg.Rect
     state: bool
+    action: Callable[[bool], None] | None
 
     def __init__(
-        self, off_button, on_button, selected, x, y, width, height, state: bool = False
+        self,
+        off_button,
+        on_button,
+        x,
+        y,
+        width,
+        height,
+        state: bool = False,
+        action: Callable[[bool], None] | None = None,
     ):
         self.off_button = Sprite(off_button, (width, height))
         self.on_button = Sprite(on_button, (width, height))
-        self.selected = Sprite(selected, (width, height))
-        self.hitbox = pg.Rect(x, y, width, height)
+        self.hitbox = pg.Rect(0, 0, width, height)
+        self.hitbox.center = (x, y)
         self.state = state
+        self.action = action
 
     def toggle(self):
         self.state = not self.state
@@ -95,20 +104,19 @@ class ToggleButton(UIComponent):
     def update(self, dt: float) -> None:
         if self.hitbox.collidepoint(input_manager.mouse_pos):
             if input_manager.mouse_pressed(1):
-                self.toggle()
+                if self.action:
+                    self.action(self.state)
+                    self.toggle()
 
     @override
     def draw(self, screen: pg.Surface) -> None:
         # keep sprites aligned with hitbox
         self.on_button.rect.topleft = self.hitbox.topleft
         self.off_button.rect.topleft = self.hitbox.topleft
-        self.selected.rect.topleft = self.hitbox.topleft
         if self.state:
             self.on_button.draw(screen)
         else:
             self.off_button.draw(screen)
-        if self.hitbox.collidepoint(input_manager.mouse_pos):
-            self.selected.draw(screen)
 
 
 class Slider(UIComponent):

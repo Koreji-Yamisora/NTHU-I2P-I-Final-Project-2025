@@ -2,16 +2,17 @@ import pygame as pg
 import threading
 import time
 
-import importlib
 
 from src.scenes.scene import Scene
 from src.core import GameManager, OnlineManager
-from src.utils import Logger, PositionCamera, GameSettings, Position
-from src.core.services import sound_manager, input_manager
+from src.utils import crd, Logger, PositionCamera, GameSettings, Position
+from src.utils.reloader import reload
+from src.core.services import sound_manager
 from src.sprites import Sprite
 from typing import override
 from src.interface.components import Button
-import src.interface.overlay_game as Overlay
+
+from src.interface.overlay_game import SettingOverlay
 
 
 class GameScene(Scene):
@@ -19,7 +20,7 @@ class GameScene(Scene):
     online_manager: OnlineManager | None
     sprite_online: Sprite
     menu_button: Button
-    setting_overlay: Overlay.SettingOverlay
+    setting_overlay: SettingOverlay
 
     def __init__(self):
         super().__init__()
@@ -39,22 +40,20 @@ class GameScene(Scene):
             "ingame_ui/options1.png", (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
         )
 
-        px, py = (
-            GameSettings.SCREEN_WIDTH // 128,
-            GameSettings.SCREEN_HEIGHT * 96 // 128,
-        )
+        sw = crd(GameSettings.SCREEN_WIDTH)
+        sh = crd(GameSettings.SCREEN_HEIGHT)
         # overlay
         self.menu_button = Button(
             "UI/button_setting.png",
             "UI/button_setting_hover.png",
-            px + 50,
-            py,
+            sw.per(3),
+            sh.per(3),
             100,
             100,
             lambda: self.setting_overlay.open(),
         )
 
-        self.setting_overlay = Overlay.SettingOverlay(
+        self.setting_overlay = SettingOverlay(
             self.game_manager, on_close=lambda: self.setting_overlay.close()
         )
         self.db = 0.0
@@ -72,38 +71,18 @@ class GameScene(Scene):
 
     @override
     def update(self, dt: float):
-        if GameSettings.DEBUG and input_manager.key_pressed(pg.K_e):
-            importlib.reload(Overlay)
-            was_open = self.setting_overlay.is_open
-            self.setting_overlay = Overlay.SettingOverlay(
-                self.game_manager, on_close=lambda: self.setting_overlay.close()
-            )
-            if was_open:
-                Logger.info("Reloaded overlay")
-                self.setting_overlay.open()
-
-        self.db -= dt
-        if GameSettings.DEBUG and self.db <= 0.0:
-            importlib.reload(Overlay)
-            was_open = self.setting_overlay.is_open
-            self.setting_overlay = Overlay.SettingOverlay(
-                self.game_manager, on_close=lambda: self.setting_overlay.close()
-            )
-            if was_open:
-                Logger.info("Reloaded overlay")
-                self.setting_overlay.open()
-            self.db = 3.0
-
+        # reload
+        reload(self, dt)
         self.game_manager.try_switch_map()
 
         if not self.setting_overlay.is_open:
             self.menu_button.update(dt)
+        else:
+            self.setting_overlay.update(dt)
         if self.game_manager.player:
             self.game_manager.player.update(dt)
         for enemy in self.game_manager.current_enemy_trainers:
             enemy.update(dt)
-        if self.setting_overlay.is_open:
-            self.setting_overlay.update(dt)
 
         self.game_manager.bag.update(dt)
 

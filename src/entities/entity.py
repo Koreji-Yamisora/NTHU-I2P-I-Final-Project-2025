@@ -45,10 +45,10 @@ class Entity:
         [TODO HACKATHON 3]
         Implement the correct algorithm of player camera
         """
-        width = GameSettings.SCREEN_WIDTH
-        height = GameSettings.SCREEN_HEIGHT
-        cam_x = self.position.x - width // 2
-        cam_y = self.position.y - height // 2
+        width = GameSettings.SCREEN_WIDTH // 2
+        height = GameSettings.SCREEN_HEIGHT // 2
+        cam_x = self.position.x - width
+        cam_y = self.position.y - height
 
         return PositionCamera(int(cam_x), int(cam_y))
 
@@ -65,4 +65,3 @@ class Entity:
         x = float(data["x"])
         y = float(data["y"])
         return cls(x * GameSettings.TILE_SIZE, y * GameSettings.TILE_SIZE, game_manager)
-

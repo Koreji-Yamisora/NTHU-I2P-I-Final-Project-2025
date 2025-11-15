@@ -12,7 +12,8 @@ from src.sprites import Sprite
 from typing import override
 from src.interface.components import Button
 
-from src.interface.overlay_game import SettingOverlay
+
+from src.interface import SettingOverlay, Inventory
 
 
 class GameScene(Scene):
@@ -52,11 +53,20 @@ class GameScene(Scene):
             100,
             lambda: self.setting_overlay.open(),
         )
-
-        self.setting_overlay = SettingOverlay(
-            self.game_manager, on_close=lambda: self.setting_overlay.close()
+        self.inventory_button = Button(
+            "UI/button_backpack.png",
+            "UI/button_backpack_hover.png",
+            sw.per(3),
+            sh.per(13),
+            100,
+            100,
+            lambda: self.inventory.open(),
         )
+
+        self.setting_overlay = SettingOverlay(self.game_manager, self.menu_button)
+        self.inventory = Inventory(self.game_manager, self.inventory_button)
         self.db = 0.0
+        self.overlays = [self.setting_overlay, self.inventory]
 
     @override
     def enter(self) -> None:
@@ -72,13 +82,20 @@ class GameScene(Scene):
     @override
     def update(self, dt: float):
         # reload
-        reload(self, dt)
+        # reload(self, dt)
+        #
+
+        all_off = True
+        for overlay in self.overlays:
+            if overlay.is_open:
+                all_off = False
+                overlay.update(dt)
+        for overlay in self.overlays:
+            if not overlay.is_open and all_off:
+                overlay.on_button.update(dt)
+
         self.game_manager.try_switch_map()
 
-        if not self.setting_overlay.is_open:
-            self.menu_button.update(dt)
-        else:
-            self.setting_overlay.update(dt)
         if self.game_manager.player:
             self.game_manager.player.update(dt)
         for enemy in self.game_manager.current_enemy_trainers:
@@ -112,11 +129,15 @@ class GameScene(Scene):
             self.game_manager.current_map.draw(screen, camera)
         for enemy in self.game_manager.current_enemy_trainers:
             enemy.draw(screen, camera)
-        self.setting_overlay.draw(screen)
-        if not self.setting_overlay.is_open:
-            self.menu_button.draw(screen)
-        self.game_manager.bag.draw(screen)
 
+        all_off = True
+        for overlay in self.overlays:
+            if overlay.is_open:
+                all_off = False
+                overlay.draw(screen)
+        for overlay in self.overlays:
+            if not overlay.is_open and all_off:
+                overlay.on_button.draw(screen)
         if self.online_manager and self.game_manager.player:
             list_online = self.online_manager.get_list_players()
             for player in list_online:

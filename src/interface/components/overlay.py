@@ -22,7 +22,6 @@ class Overlay(UIComponent):
     def __init__(
         self,
         game_manager: GameManager,
-        on_close: Callable[[], None] | None = None,
         overlay_alpha: int | None = None,
     ):
         self.is_open = False

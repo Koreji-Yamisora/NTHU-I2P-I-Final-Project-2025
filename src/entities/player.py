@@ -80,7 +80,7 @@ class Player(Entity):
                     self.animation.switch("right")
 
         np_rectx = self.animation.rect.copy()
-        np_rectx.x += dis.x
+        np_rectx.x += int(dis.x)
 
         if self.game_manager.check_collision(np_rectx):
             self.position.x = self._snap_to_grid(self.position.x)
@@ -88,7 +88,7 @@ class Player(Entity):
             self.position.x += dis.x
 
         np_recty = self.animation.rect.copy()
-        np_recty.y += dis.y
+        np_recty.y += int(dis.y)
         if self.game_manager.check_collision(np_recty):
             self.position.y = self._snap_to_grid(self.position.y)
         else:

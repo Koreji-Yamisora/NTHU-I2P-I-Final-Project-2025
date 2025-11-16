@@ -63,10 +63,17 @@ class GameScene(Scene):
             lambda: self.inventory.open(),
         )
 
-        self.setting_overlay = SettingOverlay(self.game_manager, self.menu_button)
+        self.setting_overlay = SettingOverlay(
+            self.game_manager, self.menu_button, self.reload_gm
+        )
         self.inventory = Inventory(self.game_manager, self.inventory_button)
         self.db = 0.0
         self.overlays = [self.setting_overlay, self.inventory]
+
+    def reload_gm(self, new_manager: GameManager):
+        self.game_manager = new_manager
+        self.inventory.game_manager = new_manager
+        self.inventory.refresh_bag()
 
     @override
     def enter(self) -> None:
@@ -82,8 +89,7 @@ class GameScene(Scene):
     @override
     def update(self, dt: float):
         # reload
-        # reload(self, dt)
-        #
+        reload(self, dt)
 
         all_off = True
         for overlay in self.overlays:

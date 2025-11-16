@@ -12,10 +12,16 @@ class SettingOverlay(Overlay):
     bg: Sprite
     game_manager: GameManager
 
-    def __init__(self, game_manager: GameManager, on_button: Button | None = None):
+    def __init__(
+        self,
+        game_manager: GameManager,
+        on_button: Button | None = None,
+        on_load: Callable = lambda: None,
+    ):
         super().__init__(game_manager, overlay_alpha=128)
         self.on_button = on_button
         self.game_manager = game_manager
+        self.on_load = on_load
 
         # coodinator
         sw = crd(GameSettings.SCREEN_WIDTH)
@@ -45,6 +51,15 @@ class SettingOverlay(Overlay):
             lambda: self.close(),
         )
         self.add_button(back_button)
+
+        def text(
+            size: int,
+            color: tuple[int, int, int],
+        ):
+            font = resource_manager.get_font("Minecraft.ttf", size)
+            text_color = color
+            return font.render("Volume", True, text_color)
+            volume_label_pos = pg.Rect()
 
         bgcx = crd(self.bg.rect.centerx + self.bg.rect.left)
         bgcy = crd(self.bg.rect.centery)
@@ -137,6 +152,7 @@ class SettingOverlay(Overlay):
             Logger.error("Failed to load game manager")
             exit(1)
         self.game_manager = manager
+        self.on_load(self.game_manager)
 
     def update_content(self, dt: float) -> None:
         self.toggle_button.update(dt)
@@ -206,23 +222,26 @@ class Inventory(Overlay):
         left_col_y = bg_top + bg_height.per(10)
         left_col_width = bg_width.per(35)
         left_col_height = bg_height.per(80)
-        left_col_rect = pg.Rect(left_col_x, left_col_y, left_col_width, left_col_height)
+        self.left_col_rect = pg.Rect(
+            left_col_x, left_col_y, left_col_width, left_col_height
+        )
 
         right_col_x = bg_left + bg_width.per(55)
         right_col_y = bg_top + bg_height.per(10)
         right_col_width = bg_width.per(35)
         right_col_height = bg_height.per(80)
-        right_col_rect = pg.Rect(
+        self.right_col_rect = pg.Rect(
             right_col_x, right_col_y, right_col_width, right_col_height
         )
+        self.refresh_bag()
 
-        self.game_manager.bag.add_monster_col(left_col_rect)
-        self.game_manager.bag.add_item_col(right_col_rect)
-        self.game_manager.bag.monster_slot(self.game_manager.bag._monsters_data)
-        self.game_manager.bag.item_slot(self.game_manager.bag._items_data)
+    def refresh_bag(self):
+        self.game_manager.bag.add_monster_col(self.left_col_rect)
+        self.game_manager.bag.add_item_col(self.right_col_rect)
+        self.game_manager.bag.refresh()
 
     def update_content(self, dt: float) -> None:
-        self.game_manager.bag.update(dt)
+        pass
 
     def draw_content(self, screen: pg.Surface) -> None:
         self.bg.draw(screen)

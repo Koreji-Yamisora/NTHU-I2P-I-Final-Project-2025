@@ -41,12 +41,12 @@
       "path": "gym.tmx",
       "teleport": [
         {
-          "x": 11,
+          "x": 12,
           "y": 14,
           "destination": "map.tmx"
         },
         {
-          "x": 12,
+          "x": 11,
           "y": 14,
           "destination": "map.tmx"
         },
@@ -98,13 +98,6 @@
         "max_hp": 160,
         "level": 30,
         "sprite_path": "menu_sprites/menusprite4.png"
-      },
-      {
-        "name": "Gengar",
-        "hp": 110,
-        "max_hp": 140,
-        "level": 28,
-        "sprite_path": "menu_sprites/menusprite5.png"
       },
       {
         "name": "Dragonite",

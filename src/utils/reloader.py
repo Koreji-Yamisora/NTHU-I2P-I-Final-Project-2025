@@ -21,6 +21,8 @@ def reload(part, dt):
             "src.interface.components",
             "src.interface.overlay_game",
             "src.interface",
+            "src.data.bag",
+            "src.data",
         ]
 
         for module_name in modules_to_reload:
@@ -35,16 +37,7 @@ def reload(part, dt):
             except Exception as e:
                 Logger.error(f"Failed to reload {module_name}: {e}")
 
-        og = sys.modules.get("src.interface.overlay_game")
-        if og is None:
-            import src.interface.overlay_game as og
+        # Refresh bag after reload if inventory exists
+        if hasattr(part, "inventory") and hasattr(part.inventory, "refresh_bag"):
+            part.inventory.refresh_bag()
 
-        was_open = part.setting_overlay.is_open
-        part.setting_overlay = og.SettingOverlay(
-            part.game_manager, on_close=lambda: part.setting_overlay.close()
-        )
-        if was_open:
-            part.setting_overlay.open()
-        part.db = 3.0
-        if input_manager.key_pressed(pg.K_e):
-            Logger.info("Reloaded overlay_game module")

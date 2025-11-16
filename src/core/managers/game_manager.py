@@ -179,6 +179,7 @@ class GameManager:
             return None
 
         with open(path, "r") as f:
+            Logger.info(f"Loading game from {path}")
             data = json.load(f)
         return cls.from_dict(data)
 
@@ -189,7 +190,6 @@ class GameManager:
             block["enemy_trainers"] = [
                 t.to_dict() for t in self.enemy_trainers.get(key, [])
             ]
-            # Use player_spawns if available, otherwise use map spawn
             spawn = self.player_spawns.get(key)
             if spawn is None:
                 spawn = m.spawn

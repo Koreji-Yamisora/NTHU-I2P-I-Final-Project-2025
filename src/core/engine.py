@@ -6,6 +6,7 @@ from .services import scene_manager, input_manager
 from src.scenes.menu_scene import MenuScene
 from src.scenes.game_scene import GameScene
 from src.scenes.setting_scene import SettingsScene
+from src.scenes.battle_scene import BattleScene
 
 
 class Engine:
@@ -15,6 +16,8 @@ class Engine:
 
     def __init__(self):
         Logger.info("Initializing Engine")
+        self.ats_event = pg.USEREVENT + 1
+        self.ats_update = pg.USEREVENT + 2
 
         pg.init()
 
@@ -33,7 +36,10 @@ class Engine:
         Register the setting scene here
         """
         scene_manager.register_scene("settings", SettingsScene())
+        scene_manager.register_scene("battle", BattleScene())
         scene_manager.change_scene("menu")
+
+        self.update_ats()
 
     def run(self):
         Logger.info("Running the Game Loop ...")
@@ -44,11 +50,23 @@ class Engine:
             self.update(dt)
             self.render()
 
+    def update_ats(self):
+        ats = GameSettings.AUTOSAVE
+        if ats > 0:
+            pg.time.set_timer(self.ats_event, ats * 60_000)
+
     def handle_events(self):
         input_manager.reset()
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 self.running = False
+            if event.type == self.ats_event:
+                from src.core import gh
+
+                gh.save()
+            if event.type == self.ats_update:
+                self.update_ats()
+
             input_manager.handle_events(event)
 
     def update(self, dt: float):

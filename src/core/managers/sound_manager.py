@@ -12,12 +12,22 @@ class SoundManager:
         if self.current_bgm:
             self.current_bgm.stop()
         audio = load_sound(filepath)
-        audio.set_volume(GameSettings.AUDIO_VOLUME)
+        # Set volume based on mute state
+        if GameSettings.AUDIO_MUTE:
+            audio.set_volume(0)
+        else:
+            audio.set_volume(GameSettings.AUDIO_VOLUME)
         audio.play(-1)
         self.current_bgm = audio
+        # Also refresh all channels to ensure consistency
+        self.refresh()
 
-    def list_channels(self):
-        return pg.mixer.get_num_channels()
+    def refresh(self):
+        for channel in range(pg.mixer.get_num_channels()):
+            if GameSettings.AUDIO_MUTE:
+                pg.mixer.Channel(channel).set_volume(0)
+            else:
+                pg.mixer.Channel(channel).set_volume(GameSettings.AUDIO_VOLUME)
 
     def pause_all(self):
         pg.mixer.pause()
@@ -33,4 +43,3 @@ class SoundManager:
     def stop_all_sounds(self):
         pg.mixer.stop()
         self.current_bgm = None
-

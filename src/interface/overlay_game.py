@@ -5,30 +5,23 @@ from src.core.services import sound_manager, resource_manager
 from src.core.managers import GameManager
 from src.utils import GameSettings, Logger, crd
 from typing import Callable
-from src.sprites import Sprite
+from src.sprites import Sprite, Text
+from src.core.services import input_manager
+from src.core.gm_helper import gh
 
 
 class SettingOverlay(Overlay):
     bg: Sprite
-    game_manager: GameManager
 
-    def __init__(
-        self,
-        game_manager: GameManager,
-        on_button: Button | None = None,
-        on_load: Callable = lambda: None,
-    ):
-        super().__init__(game_manager, overlay_alpha=128)
-        self.on_button = on_button
-        self.game_manager = game_manager
-        self.on_load = on_load
+    def __init__(self):
+        super().__init__(overlay_alpha=128)
 
         # coodinator
         sw = crd(GameSettings.SCREEN_WIDTH)
         sh = crd(GameSettings.SCREEN_HEIGHT)
 
         self.bgx = crd(sw.per(70))
-        self.bgy = sh.per(80)
+        self.bgy = crd(sh.per(80))
         self.bg = Sprite(
             "UI/raw/UI_Flat_Frame03a.png",
             (self.bgx, self.bgy),
@@ -39,49 +32,43 @@ class SettingOverlay(Overlay):
             sh.per(50),
         )
 
-        self.bag = self.game_manager.bag
         # Back button
+        x = self.bg.rect.right - self.bgx.per(8)
+        y = self.bg.rect.top + self.bgx.per(4)
         back_button = Button(
             "UI/button_back.png",
             "UI/button_back_hover.png",
-            sw.per(3),
-            sh.per(3),
-            100,
-            100,
+            x,
+            y,
+            self.bgx.per(5),
+            self.bgx.per(5),
             lambda: self.close(),
         )
-        self.add_button(back_button)
-
-        def text(
-            size: int,
-            color: tuple[int, int, int],
-        ):
-            font = resource_manager.get_font("Minecraft.ttf", size)
-            text_color = color
-            return font.render("Volume", True, text_color)
-            volume_label_pos = pg.Rect()
+        self.add_active(back_button)
 
         bgcx = crd(self.bg.rect.centerx + self.bg.rect.left)
         bgcy = crd(self.bg.rect.centery)
-        print(bgcx)
-        font = resource_manager.get_font("Minecraft.ttf", 24)
-        text_color = (255, 255, 255)
-        self.volume_label = font.render("Volume", True, text_color)
-        self.volume_label_pos = (
-            bgcx.per(50) - self.volume_label.get_width() // 2,
+        voluem_label = Text("Volume", 24, "azure")
+        voluem_label.rect.topleft = (
+            bgcx.per(50) - voluem_label.rect.width // 2,
             bgcy.per(30),
         )
+        self.add_passive(voluem_label)
 
         def mute_audio(state):
-            for channel in range(sound_manager.list_channels()):
-                if state:
-                    GameSettings.AUDIO_MUTE = True
-                    pg.mixer.Channel(channel).set_volume(0)
+            # state=True means toggle is ON (unmuted), state=False means toggle is OFF (muted)
+            GameSettings.AUDIO_MUTE = (
+                not state
+            )  # Invert: if toggle is ON, audio is NOT muted
+            sound_manager.refresh()
+            # Also update current Bgh.gm if it exists
+            if sound_manager.current_bgm:
+                if GameSettings.AUDIO_MUTE:
+                    sound_manager.current_bgm.set_volume(0)
                 else:
-                    GameSettings.AUDIO_MUTE = False
-                    pg.mixer.Channel(channel).set_volume(GameSettings.AUDIO_VOLUME)
+                    sound_manager.current_bgm.set_volume(GameSettings.AUDIO_VOLUME)
 
-        self.toggle_button = ToggleButton(
+        toggle_button = ToggleButton(
             "UI/raw/UI_Flat_ToggleOff03a.png",
             "UI/raw/UI_Flat_ToggleOn03a.png",
             bgcx.per(70),
@@ -91,6 +78,7 @@ class SettingOverlay(Overlay):
             state=GameSettings.AUDIO_MUTE,
             action=mute_audio,
         )
+        self.add_active(toggle_button)
 
         # Volume Slider
         def set_vol(state):
@@ -100,7 +88,7 @@ class SettingOverlay(Overlay):
 
         gx = crd(self.bgx // 2)
 
-        self.volume_slider = Slider(
+        volume_slider = Slider(
             "UI/raw/UI_Flat_FrameSlot03b.png",
             "UI/raw/UI_Flat_BarFill01g.png",
             "UI/raw/UI_Flat_BarFill01e.png",
@@ -111,68 +99,48 @@ class SettingOverlay(Overlay):
             gx.per(4),
             gx.per(5),
             gx.per(8),
-            GameSettings.AUDIO_VOLUME,
+            state=GameSettings.AUDIO_VOLUME,
             action=set_vol,
         )
+        self.add_active(volume_slider)
 
-        self.save_button = Button(
+        save_button = Button(
             "UI/button_save.png",
             "UI/button_save_hover.png",
-            sw.per(93),
-            sh.per(3),
-            100,
-            100,
-            lambda: self.game_manager.save("saves/game0.json"),
+            (self.bg.rect.right + self.bg.rect.centerx) // 2 - self.bgx.per(5),
+            self.bg.rect.bottom - self.bgy.per(12),
+            75,
+            75,
+            lambda: gh.save(),
         )
-        self.add_button(self.save_button)
+        self.add_active(save_button)
 
-        self.load_button = Button(
+        load_button = Button(
             "UI/button_load.png",
             "UI/button_load_hover.png",
-            sw.per(93),
-            sh.per(12),
-            100,
-            100,
-            lambda: self.load(),
+            (self.bg.rect.right + self.bg.rect.centerx) // 2 + self.bgx.per(5),
+            self.bg.rect.bottom - self.bgy.per(12),
+            75,
+            75,
+            lambda: gh.load(),
         )
-        self.add_button(self.load_button)
-        left_col_rect = pg.Rect(
-            bgcx.per(30), bgcx.per(33), bgcx - bgcx.per(30), bgcy.per(66) - bgcy.per(33)
-        )
-        right_col_rect = pg.Rect(
-            bgcx.per(130),
-            bgcx.per(33),
-            bgcx - bgcx.per(30),
-            bgcy.per(66) - bgcy.per(33),
-        )
-
-    def load(self):
-        manager = GameManager.load("saves/game0.json")
-        if manager is None:
-            Logger.error("Failed to load game manager")
-            exit(1)
-        self.game_manager = manager
-        self.on_load(self.game_manager)
+        self.add_active(load_button)
 
     def update_content(self, dt: float) -> None:
-        self.toggle_button.update(dt)
-        self.volume_slider.update(dt)
+        if input_manager.key_pressed(pg.K_ESCAPE):
+            input_manager.reset()
+            self.close()
 
     def draw_content(self, screen: pg.Surface) -> None:
         self.bg.draw(screen)
-        screen.blit(self.volume_label, self.volume_label_pos)
-        self.toggle_button.draw(screen)
-        self.volume_slider.draw(screen)
 
 
 class Inventory(Overlay):
     bg: Sprite
     game_manager: GameManager
 
-    def __init__(self, game_manager: GameManager, on_button: Button | None = None):
-        super().__init__(game_manager, overlay_alpha=128)
-        self.game_manager = game_manager
-        self.on_button = on_button
+    def __init__(self):
+        super().__init__(overlay_alpha=128)
 
         # coodinator
         sw = crd(GameSettings.SCREEN_WIDTH)
@@ -200,7 +168,7 @@ class Inventory(Overlay):
             100,
             lambda: self.close(),
         )
-        self.add_button(back_button)
+        self.add_active(back_button)
 
         bgcx = crd(self.bg.rect.centerx)
         bgcy = crd(self.bg.rect.centery)
@@ -233,17 +201,17 @@ class Inventory(Overlay):
         self.right_col_rect = pg.Rect(
             right_col_x, right_col_y, right_col_width, right_col_height
         )
-        self.refresh_bag()
-
-    def refresh_bag(self):
-        self.game_manager.bag.add_monster_col(self.left_col_rect)
-        self.game_manager.bag.add_item_col(self.right_col_rect)
-        self.game_manager.bag.refresh()
+        if gh.gm:
+            gh.gm.bag.my_mon()
+            gh.gm.bag.add_monster_col(self.left_col_rect)
+            gh.gm.bag.add_item_col(self.right_col_rect)
 
     def update_content(self, dt: float) -> None:
-        pass
+        if input_manager.key_pressed(pg.K_ESCAPE):
+            input_manager.reset()
+            self.close()
 
     def draw_content(self, screen: pg.Surface) -> None:
         self.bg.draw(screen)
-        screen.blit(self.volume_label, self.volume_label_pos)
-        self.game_manager.bag.draw(screen)
+        if gh.gm:
+            gh.gm.bag.draw(screen)

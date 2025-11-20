@@ -1,16 +1,16 @@
 import pygame as pg
 import json
-from src.utils import GameSettings, crd
+from src.utils import GameSettings, crd, Logger
 from src.utils.definition import Monster, Item
 from src.sprites import Sprite, Text
 from src.core.managers.resource_manager import ResourceManager
+from src.data import pokedex
 
 
 class Bag:
     _monsters_data: list[Monster]
-    monster_Sprite: list[Sprite]
     _items_data: list[Item]
-    items_Sprite: list[Sprite]
+    monsters: list[dict]
 
     def __init__(
         self,
@@ -23,13 +23,28 @@ class Bag:
         self.monster_data = []
         self.item_data = []
         self.mbgs = []
+        self.monsters = []
 
-    def refresh(self):
-        # Check if slots are initialized before refreshing
-        if not hasattr(self, "mon_slots") or not hasattr(self, "item_slots"):
-            return  # Can't refresh if slots aren't set up yet
-        self.monster_slot(self._monsters_data)
-        self.item_slot(self._items_data)
+    def get_monster(self, idx):
+        return self.monsters[idx]
+
+    def save_battle(self, monsters: list[dict]):
+        self.monsters = monsters
+        for i in range(len(monsters)):
+            self._monsters_data[i]["hp"] = monsters[i]["chp"]
+
+    def get_items(self):
+        item = []
+        for i in range(len(self._items_data)):
+            item.append(self.get_item(i))
+        return item
+
+    def get_item(self, idx):
+        item = {}
+        item["sprite"] = Sprite(self._items_data[idx]["sprite_path"], (48, 48))
+        item["name"] = self._items_data[idx]["name"]
+        item["count"] = self._items_data[idx]["count"]
+        return item
 
     def add_monster_col(self, col_rect: pg.Rect):
         self.monster_col_rect = col_rect
@@ -39,45 +54,95 @@ class Bag:
         for idx in range(6):
             mbg = Sprite(
                 "UI/raw/UI_Flat_Frame03a.png",
-                (self.monster_col_rect.width, crd(self.mon_slot_height)),
+                (self.monster_col_rect.width, (self.mon_slot_height)),
             )
             self.mon_slots.append(
                 pg.Rect(
                     self.monster_col_rect.left,
                     self.monster_col_rect.top + self.mon_slot_height * idx,
                     self.monster_col_rect.width,
-                    self.mon_slot_height,
+                    crd(self.mon_slot_height).per(50),
                 )
             )
-            mbg.rect.center = self.mon_slots[idx].center
+            mbg.rect = self.mon_slots[idx]
             self.mbgs.append(mbg)
+        self.monster_slot()
 
-    def monster_slot(self, _monster_data: list[Monster]):
+    def my_mon(self):
+        stat = ("atk", "def", "spa", "spd", "spe")
+        mod = 1
+        self.monsters = []
+
+        for i, mon in enumerate(self._monsters_data):
+            if i == 6:
+                break
+            base = pokedex.data[mon["id"]]
+            hp = (
+                int(
+                    (2 * base["hp"] + mon["IV"]["hp"] + mon["EV"]["hp"] / 4)
+                    * mon["level"]
+                    / 100
+                )
+                + mon["level"]
+                + 10
+            )
+            stats = []
+            for s in stat:
+                stats.append(
+                    (
+                        int(
+                            (2 * base[s] + mon["IV"][s] + mon["EV"][s] / 4)
+                            * mon["level"]
+                            / 100
+                        )
+                        + 5
+                    )
+                    * mod
+                )
+            atk, defen, spa, spd, spe = stats
+
+            self.monsters.append(
+                {
+                    "id": mon["id"],
+                    "name": mon["name"],
+                    "level": mon["level"],
+                    "chp": mon["hp"],
+                    "hp": hp,
+                    "atk": atk,
+                    "def": defen,
+                    "spa": spa,
+                    "spd": spd,
+                    "spe": spe,
+                    "type": base["type"],
+                    "move": mon["move"],
+                }
+            )
+
+    def monster_slot(self):
         self.monster_data.clear()
-        for idx, monster in enumerate(_monster_data):
-            if idx < 6:
-                sprite = Sprite(monster["sprite_path"], (64, 64))
-                sprite.rect.center = self.mon_slots[idx].center
-                name = Text(monster["name"], 24, "azure")
-                name.rect.topleft = (
-                    self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
-                    self.mon_slots[idx].top + crd(self.mon_slot_height).per(5),
-                )
-                hp = Text(f"HP: {monster['hp']}/{monster['max_hp']}", 24, "azure")
-                hp.rect.topleft = (
-                    self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
-                    self.mon_slots[idx].top + crd(self.mon_slot_height).per(35),
-                )
+        for idx, monster in enumerate(self.monsters):
+            sprite = Sprite(pokedex.data[monster["id"]]["sprte_path"], (64, 64))
+            sprite.rect.center = self.mon_slots[idx].center
+            name = Text(monster["name"], 24, "azure")
+            name.rect.topleft = (
+                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
+                self.mon_slots[idx].top + crd(self.mon_slot_height).per(5),
+            )
+            hp = Text(f"HP: {monster['chp']}/{monster['hp']}", 24, "azure")
+            hp.rect.topleft = (
+                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
+                self.mon_slots[idx].top + crd(self.mon_slot_height).per(35),
+            )
 
-                level = Text("Level: " + str(monster["level"]), 24, "azure")
-                level.rect.topleft = (
-                    self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
-                    self.mon_slots[idx].top + crd(self.mon_slot_height).per(65),
-                )
-                self.monster_data.append((sprite, name, hp, level))
+            level = Text("Level: " + str(monster["level"]), 24, "azure")
+            level.rect.topleft = (
+                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
+                self.mon_slots[idx].top + crd(self.mon_slot_height).per(65),
+            )
+            self.monster_data.append((sprite, name, hp, level))
 
-                # TODO
-                # self.computer
+            # TODO
+            # self.computer
 
     def add_item_col(self, col_rect: pg.Rect):
         self.item_col_rect = col_rect
@@ -91,10 +156,11 @@ class Bag:
             )
             for idx in range(8)  # TODO scroll
         ]
+        self.item_slot()
 
-    def item_slot(self, _item_data: list[Item]):
+    def item_slot(self):
         self.item_data.clear()
-        for idx, item in enumerate(_item_data):
+        for idx, item in enumerate(self._items_data):
             if idx < 8:
                 sprite = Sprite(item["sprite_path"], (48, 48))
                 sprite.rect.center = self.item_slots[idx].center

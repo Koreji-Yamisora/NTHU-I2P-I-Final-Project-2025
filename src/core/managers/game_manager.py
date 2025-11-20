@@ -1,6 +1,7 @@
 from __future__ import annotations
 from src.utils import Logger, GameSettings, Position, Teleport, Direction, Warp
-import json, os
+import json
+import os
 import pygame as pg
 from typing import TYPE_CHECKING
 

@@ -1,23 +1,19 @@
 import pygame as pg
 import threading
 import time
-
-
 from src.scenes.scene import Scene
 from src.core import GameManager, OnlineManager
 from src.utils import crd, Logger, PositionCamera, GameSettings, Position
-from src.utils.reloader import reload
-from src.core.services import sound_manager
+from src.core.services import sound_manager, input_manager, scene_manager
 from src.sprites import Sprite
 from typing import override
 from src.interface.components import Button
-
-
 from src.interface import SettingOverlay, Inventory
+
+from src.core.gm_helper import gh
 
 
 class GameScene(Scene):
-    game_manager: GameManager
     online_manager: OnlineManager | None
     sprite_online: Sprite
     menu_button: Button
@@ -25,12 +21,8 @@ class GameScene(Scene):
 
     def __init__(self):
         super().__init__()
-        # Game Manager
-        manager = GameManager.load("saves/game0.json")
-        if manager is None:
-            Logger.error("Failed to load game manager")
-            exit(1)
-        self.game_manager = manager
+
+        gh.load()
 
         # Online Manager
         if GameSettings.IS_ONLINE:
@@ -63,17 +55,9 @@ class GameScene(Scene):
             lambda: self.inventory.open(),
         )
 
-        self.setting_overlay = SettingOverlay(
-            self.game_manager, self.menu_button, self.reload_gm
-        )
-        self.inventory = Inventory(self.game_manager, self.inventory_button)
+        self.setting_overlay = SettingOverlay()
+        self.inventory = Inventory()
         self.db = 0.0
-        self.overlays = [self.setting_overlay, self.inventory]
-
-    def reload_gm(self, new_manager: GameManager):
-        self.game_manager = new_manager
-        self.inventory.game_manager = new_manager
-        self.inventory.refresh_bag()
 
     @override
     def enter(self) -> None:
@@ -88,69 +72,68 @@ class GameScene(Scene):
 
     @override
     def update(self, dt: float):
-        # reload
-        reload(self, dt)
+        if self.setting_overlay.is_open or self.inventory.is_open:
+            pass
+        else:
+            self.menu_button.update(dt)
+            self.inventory_button.update(dt)
+        if self.setting_overlay.is_open:
+            self.setting_overlay.update(dt)
+        if self.inventory.is_open:
+            self.inventory.update(dt)
+        if gh.gm:
+            gh.gm.try_switch_map()
 
-        all_off = True
-        for overlay in self.overlays:
-            if overlay.is_open:
-                all_off = False
-                overlay.update(dt)
-        for overlay in self.overlays:
-            if not overlay.is_open and all_off:
-                overlay.on_button.update(dt)
+            if gh.gm.player:
+                gh.gm.player.update(dt)
+                for enemy in gh.gm.current_enemy_trainers:
+                    if gh.gm.player.animation.rect.colliderect(enemy.hitbox):
+                        enemy.detected = True
+                    enemy.update(dt)
 
-        self.game_manager.try_switch_map()
+            gh.gm.bag.update(dt)
 
-        if self.game_manager.player:
-            self.game_manager.player.update(dt)
-        for enemy in self.game_manager.current_enemy_trainers:
-            enemy.update(dt)
+            if gh.gm.player and self.online_manager:
+                _ = self.online_manager.update(
+                    gh.gm.player.position.x,
+                    gh.gm.player.position.y,
+                    gh.gm.current_map.path_name,
+                )
 
-        self.game_manager.bag.update(dt)
-
-        if self.game_manager.player is not None and self.online_manager is not None:
-            _ = self.online_manager.update(
-                self.game_manager.player.position.x,
-                self.game_manager.player.position.y,
-                self.game_manager.current_map.path_name,
-            )
+        if input_manager.key_pressed(pg.K_ESCAPE) and not self.inventory.is_open:
+            input_manager.reset()
+            self.setting_overlay.open()
 
     @override
     def draw(self, screen: pg.Surface):
-        if self.game_manager.player:
-            """
-            [TODO HACKATHON 3]
-            Implement the camera algorithm logic here
-            Right now it's hard coded, you need to follow the player's positions
-            you may use the below example, but the function still incorrect, you may trace the entity.py
-            
-            camera = self.game_manager.player.camera
-            """
-            camera = self.game_manager.player.camera
-            self.game_manager.current_map.draw(screen, camera)
-            self.game_manager.player.draw(screen, camera)
-        else:
-            camera = PositionCamera(0, 0)
-            self.game_manager.current_map.draw(screen, camera)
-        for enemy in self.game_manager.current_enemy_trainers:
-            enemy.draw(screen, camera)
+        if gh.gm:
+            if gh.gm.player:
+                camera = gh.gm.player.camera
+                gh.gm.current_map.draw(screen, camera)
+                gh.gm.player.draw(screen, camera)
+            else:
+                camera = PositionCamera(0, 0)
+                gh.gm.current_map.draw(screen, camera)
+            for enemy in gh.gm.current_enemy_trainers:
+                enemy.draw(screen, camera)
 
-        all_off = True
-        for overlay in self.overlays:
-            if overlay.is_open:
-                all_off = False
-                overlay.draw(screen)
-        for overlay in self.overlays:
-            if not overlay.is_open and all_off:
-                overlay.on_button.draw(screen)
-        if self.online_manager and self.game_manager.player:
-            list_online = self.online_manager.get_list_players()
-            for player in list_online:
-                if player["map"] == self.game_manager.current_map.path_name:
-                    cam = self.game_manager.player.camera
-                    pos = cam.transform_position_as_position(
-                        Position(player["x"], player["y"])
-                    )
-                    self.sprite_online.update_pos(pos)
-                    self.sprite_online.draw(screen)
+        if self.setting_overlay.is_open or self.inventory.is_open:
+            pass
+        else:
+            self.menu_button.draw(screen)
+            self.inventory_button.draw(screen)
+        if self.setting_overlay.is_open:
+            self.setting_overlay.draw(screen)
+        if self.inventory.is_open:
+            self.inventory.draw(screen)
+        if gh.gm:
+            if self.online_manager and gh.gm.player:
+                list_online = self.online_manager.get_list_players()
+                for player in list_online:
+                    if player["map"] == gh.gm.current_map.path_name:
+                        cam = gh.gm.player.camera
+                        pos = cam.transform_position_as_position(
+                            Position(player["x"], player["y"])
+                        )
+                        self.sprite_online.update_pos(pos)
+                        self.sprite_online.draw(screen)

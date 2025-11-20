@@ -39,9 +39,18 @@ class Text:
     rect: pg.Rect
 
     def __init__(self, text: str, size: int, color: tuple[int, int, int] | str):
+        self.size = size
+        self.color = color
         self.font = resource_manager.get_font("Minecraft.ttf", size)
         self.text = self.font.render(text, True, color)
         self.rect = self.text.get_rect()
 
     def draw(self, screen: pg.Surface, camera: Optional[PositionCamera] = None):
         screen.blit(self.text, self.rect)
+
+    def change_text(self, text: str):
+        self.font = resource_manager.get_font("Minecraft.ttf", self.size)
+        self.text = self.font.render(text, True, self.color)
+        rect = self.text.get_rect()
+        rect.topleft = self.rect.topleft
+        self.rect = rect

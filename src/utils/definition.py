@@ -123,11 +123,38 @@ class Warp:
 
 
 class Monster(TypedDict):
+    id: int
+    name: str
+    level: int
+    hp: int
+    IV: dict[str, int]
+    EV: dict[str, int]
+    move: dict[str, str | int]
+
+
+class PokeDexEntry(TypedDict):
+    sprite_path: str
     name: str
     hp: int
-    max_hp: int
-    level: int
-    sprite_path: str
+    atk: int
+    defen: int
+    type1: str
+    type2: str
+
+
+class ability(TypedDict):
+    name: str
+    desc: str
+    effect: str
+    out_bt: str
+
+
+class Move(TypedDict):
+    name: str
+    cat: str
+    type: str
+    power: int
+    acc: int
 
 
 class Item(TypedDict):

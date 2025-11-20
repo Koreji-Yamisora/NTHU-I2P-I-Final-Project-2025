@@ -25,6 +25,8 @@ class Entity:
         self.direction = Direction.DOWN
         self.animation.update_pos(self.position)
         self.game_manager = game_manager
+        self.is_moving = False
+        self.is_stop = True
 
     def update(self, dt: float) -> None:
         self.animation.update_pos(self.position)

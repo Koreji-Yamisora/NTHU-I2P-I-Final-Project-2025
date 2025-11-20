@@ -2,29 +2,6 @@
   "map": [
     {
       "path": "map.tmx",
-      "enemy_trainers": [
-        {
-          "x": 24,
-          "y": 29,
-          "classification": "stationary",
-          "facing": "DOWN",
-          "max_tiles": 2
-        },
-        {
-          "x": 54,
-          "y": 16,
-          "classification": "stationary",
-          "facing": "UP",
-          "max_tiles": 2
-        },
-        {
-          "x": 31,
-          "y": 31,
-          "classification": "stationary",
-          "facing": "UP",
-          "max_tiles": 2
-        }
-      ],
       "teleport": [
         {
           "x": 24,
@@ -32,10 +9,34 @@
           "destination": "gym.tmx"
         }
       ],
+      "warps": [],
       "player": {
-        "x": 16,
-        "y": 30
-      }
+        "x": 16.0,
+        "y": 30.0
+      },
+      "enemy_trainers": [
+        {
+          "x": 24.0,
+          "y": 29.0,
+          "classification": "stationary",
+          "facing": "DOWN",
+          "max_tiles": 2
+        },
+        {
+          "x": 54.0,
+          "y": 16.0,
+          "classification": "stationary",
+          "facing": "UP",
+          "max_tiles": 2
+        },
+        {
+          "x": 31.0,
+          "y": 31.0,
+          "classification": "stationary",
+          "facing": "UP",
+          "max_tiles": 2
+        }
+      ]
     },
     {
       "path": "gym.tmx",
@@ -56,55 +57,175 @@
           "destination": "map.tmx"
         }
       ],
-      "roaming_mobs": [],
-      "enemy_trainers": [],
+      "warps": [],
       "player": {
-        "x": 12,
-        "y": 12
-      }
+        "x": 12.0,
+        "y": 12.0
+      },
+      "enemy_trainers": []
     }
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 16,
-    "y": 30
+    "x": 24.477828278447983,
+    "y": 26.17666608896551
   },
   "bag": {
     "monsters": [
       {
+        "id": 1,
         "name": "Pikachu",
-        "hp": 85,
-        "max_hp": 100,
         "level": 25,
-        "sprite_path": "menu_sprites/menusprite1.png"
+        "hp": 15,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
       },
       {
+        "id": 2,
         "name": "Charizard",
-        "hp": 150,
-        "max_hp": 200,
         "level": 36,
-        "sprite_path": "menu_sprites/menusprite2.png"
+        "hp": 15,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
       },
       {
+        "id": 3,
         "name": "Blastoise",
-        "hp": 120,
-        "max_hp": 180,
         "level": 32,
-        "sprite_path": "menu_sprites/menusprite3.png"
+        "hp": 15,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
       },
       {
+        "id": 4,
         "name": "Venusaur",
-        "hp": 90,
-        "max_hp": 160,
         "level": 30,
-        "sprite_path": "menu_sprites/menusprite4.png"
+        "hp": 15,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
       },
       {
+        "id": 5,
         "name": "Dragonite",
-        "hp": 180,
-        "max_hp": 220,
         "level": 40,
-        "sprite_path": "menu_sprites/menusprite6.png"
+        "hp": 15,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "roc",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
       }
     ],
     "items": [

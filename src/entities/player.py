@@ -9,13 +9,15 @@ from typing import override
 
 
 class Player(Entity):
-    speed: float = 4.0 * GameSettings.TILE_SIZE
+    speed: float = 8.0 * GameSettings.TILE_SIZE
     game_manager: GameManager
     tp_cooldown: float
 
     def __init__(self, x: float, y: float, game_manager: GameManager) -> None:
         super().__init__(x, y, game_manager)
         self.tp_cooldown = 0.0
+        self.sm = False
+        self.lr = True
 
     @override
     def update(self, dt: float) -> None:
@@ -64,6 +66,7 @@ class Player(Entity):
         dis.y *= self.speed * dt
 
         if dis.x != 0 or dis.y != 0:
+            self.is_moving = True
             if abs(dis.y) > abs(dis.x):
                 if dis.y < 0:
                     self.direction = Direction.UP
@@ -78,6 +81,23 @@ class Player(Entity):
                 else:
                     self.direction = Direction.RIGHT
                     self.animation.switch("right")
+        else:
+            self.is_stop = True
+        if self.is_stop:
+            self.animation.accumulator = 0
+            if self.is_moving:
+                self.sm = True
+                self.is_stop = False
+
+        if self.sm:
+            if self.lr:
+                self.animation.accumulator = 0.25
+            else:
+                self.animation.accumulator = 0.75
+            self.lr = not self.lr
+
+            self.sm = False
+            self.is_moving = False
 
         np_rectx = self.animation.rect.copy()
         np_rectx.x += int(dis.x)

@@ -29,6 +29,10 @@ class Sprite:
         else:
             pg.draw.rect(screen, (255, 0, 0), self.rect, 1)
 
+    def update_bar(self, width: int):
+        self.rect.width = width
+        self.image = pg.transform.scale(self.image, (width, self.rect.height))
+
     def update_pos(self, pos: Position):
         self.rect.topleft = (round(pos.x), round(pos.y))
 

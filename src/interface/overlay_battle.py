@@ -100,13 +100,40 @@ class HealthOverlay(Overlay):
         self.add_passive(self.name2_text)
         self.add_passive(self.level2_text)
 
-    def update_content(self, dt: float):
-        ratio1 = self.mon1["chp"] / self.mon1["hp"]
-        self.fill_bar1.rect.width = int(self.sw.per(25) * ratio1)
+    def health_ratio(self):
+        self.ratio = (
+            self.mon1["chp"] / self.mon1["hp"],
+            self.mon2["chp"] / self.mon2["hp"],
+        )
 
-        Logger.debug(self.fill_bar1.rect.width, self.fill_bar1.rect.x)
-        ratio2 = self.mon2["chp"] / self.mon2["hp"]
-        self.fill_bar2.rect.width = int(self.sw.per(25) * ratio2)
+    def health_update(self):
+        before = getattr(self, "ratio", None)
+        if before is None:
+            return
+        self.health_ratio()
+        Logger.debug(f"Health ratio: {before} / {self.ratio}")
+        if before == self.ratio:
+            return
+
+        self.start = (self.fill_bar1.rect.width, self.fill_bar2.rect.width)
+        self.target = list(map(lambda x, r: x * r, self.start, self.ratio))
+        self.elapsed = 0.0
+        self.duration = 3
+        self.animating = True
+        self.wcal = lambda i, t: int(
+            self.start[i] + (self.target[i] - self.start[i]) * t
+        )
+
+    def update_content(self, dt: float):
+        animating = getattr(self, "animating", False)
+        if animating:
+            self.elapsed += dt
+            t = self.elapsed / self.duration  # 0 to 1
+
+            self.fill_bar1.update_bar(self.wcal(0, t))
+            self.fill_bar2.update_bar(self.wcal(1, t))
+            if t >= 1.0:
+                self.animating = False
 
     def draw_content(self, screen) -> None:
         self.fill_bar1.draw(screen)

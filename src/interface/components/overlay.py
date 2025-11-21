@@ -67,7 +67,6 @@ class Overlay(UIComponent):
         if self.is_open:
             if self.overlay_alpha:
                 screen.blit(self.dark_overlay, (0, 0))
-            self.draw_content(screen)
             for b in self.backgrounds:
                 b.draw(screen)
             if self.is_passive:
@@ -75,6 +74,7 @@ class Overlay(UIComponent):
                     c.draw(screen)
                 for t in self.components:
                     t.draw(screen)
+            self.draw_content(screen)
 
     def update_content(self, dt: float) -> None:
         pass

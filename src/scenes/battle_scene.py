@@ -148,16 +148,15 @@ class BattleScene(Scene):
         self.monster2["chp"] = self.monster2["hp"]
 
     def doing_damage(self):
-        Logger.debug(self.monster2["chp"])
+        self.health_overlay.health_ratio()
 
         self.monster2["chp"] -= self.attack(
             self.monster1["move"][self.move_overlay.result()]
         )
-        Logger.debug(self.monster2["chp"])
 
         if self.monster2["chp"] < 0:
             self.monster2["chp"] = 0
-        self.health_overlay.load()
+        self.health_overlay.health_update()
 
     @override
     def update(self, dt: float) -> None:

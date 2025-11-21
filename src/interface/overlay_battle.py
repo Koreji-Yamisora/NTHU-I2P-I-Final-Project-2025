@@ -83,24 +83,27 @@ class HealthOverlay(Overlay):
 
     def update_content(self, dt: float):
         # --- BAR 1 ---
+        # Store the original left position before changing width
+        # Calculate left from the right anchor point minus full bar width
+        original_left = self.sw.per(100) - self.sh.per(5) - self.sw.per(25)
+        original_bottom = self.sh.per(100) - self.sh.per(25)
+
         ratio1 = self.mon1["chp"] / self.mon1["hp"]
         self.fill_bar1.rect.width = int(self.sw.per(25) * ratio1)
-        Logger.debug(ratio1)
 
-        self.fill_bar1.rect.bottomright = (
-            self.sw.per(100) - self.sh.per(5),
-            self.sh.per(100) - self.sh.per(25),
-        )
+        # Now set the position after width change - anchor to bottomleft so it shrinks right to left
+        self.fill_bar1.rect.bottomleft = (original_left, original_bottom)
 
         # --- BAR 2 ---
+        # Store the original left position before changing width
+        original_left = self.sh.per(40) + self.sh.per(3)
+        original_top = self.sh.per(3)
+
         ratio2 = self.mon2["chp"] / self.mon2["hp"]
         self.fill_bar2.rect.width = int(self.sw.per(25) * ratio2)
-        Logger.debug(ratio2)
 
-        self.fill_bar2.rect.topleft = (
-            self.sh.per(40) + self.sh.per(3),
-            self.sh.per(3),
-        )
+        # Now set the position after width change
+        self.fill_bar2.rect.topleft = (original_left, original_top)
 
     def draw_content(self, screen: pg.Surface):
         self.fill_bar1.draw(screen)

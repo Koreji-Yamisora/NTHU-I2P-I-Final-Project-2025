@@ -163,6 +163,9 @@ class BattleScene(Scene):
             self._init()
             self.load_data()
             self.action_overlay.open()
+        if input_manager.key_pressed(pg.K_h):
+            self.heal_all()
+            self.health_overlay.load(self.monster1, self.monster2)
 
             self.cd = 3
         self.cd -= dt

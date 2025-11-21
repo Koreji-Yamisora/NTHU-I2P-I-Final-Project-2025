@@ -58,6 +58,7 @@ class BattleScene(Scene):
             self.items = gh.gm.bag.get_items()
             self.turn = True
             self.move_overlay.inmove(self.monster1["move"])
+            self.health_overlay.load(self.monster1, self.monster2)
 
     def img(self):
         wid, hid = crd(GameSettings.SCREEN_WIDTH), crd(GameSettings.SCREEN_HEIGHT)
@@ -124,6 +125,7 @@ class BattleScene(Scene):
                 / 50
                 + 2
             ) * vai
+        Logger.debug(dmg)
         return int(dmg)
 
     def eff_mes(self, type: float, acu: int):
@@ -143,7 +145,6 @@ class BattleScene(Scene):
         self.monster2["chp"] = self.monster2["hp"]
 
     def doing_damage(self):
-        self.heal_all()
         Logger.debug(self.monster2["chp"])
 
         self.monster2["chp"] -= self.attack(
@@ -151,9 +152,13 @@ class BattleScene(Scene):
         )
         Logger.debug(self.monster2["chp"])
 
+        if self.monster2["chp"] < 0:
+            self.monster2["chp"] = 0
+        self.health_overlay.load(self.monster1, self.monster2)
+
     @override
     def update(self, dt: float) -> None:
-        if input_manager.key_pressed(pg.K_t):
+        if input_manager.key_pressed(pg.K_t) and self.cd <= 0:
             importlib.reload(ob)
             self._init()
             self.load_data()

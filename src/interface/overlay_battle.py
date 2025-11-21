@@ -7,22 +7,104 @@ from src.core.services import (
     sound_manager,
     scene_manager,
 )
-from src.core import gh
 from src.sprites import Sprite, Text
 import random
-from typing import Generator
 
 
 class HealthOverlay(Overlay):
     def __init__(self):
         super().__init__()
         self.is_open = True
-        sw = crd(GameSettings.SCREEN_WIDTH)
-        sh = crd(GameSettings.SCREEN_HEIGHT)
-        bg = Sprite("UI/raw/UI_Flat_FrameSlot02a.png", (sw.per(20), sh.per(15)))
-        bg.image = color.recol(bg.image, (120, 120, 120))
-        bg.rect.topleft = (sh.per(3), sh.per(3))
-        self.add_bg(bg)
+        self.inited = False
+        self.sw = crd(GameSettings.SCREEN_WIDTH)
+        self.sh = crd(GameSettings.SCREEN_HEIGHT)
+        self.bg = Sprite(
+            "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(28), self.sh.per(15))
+        )
+        self.bg.image = color.recol(self.bg.image, (120, 120, 120))
+        self.bg.rect.bottomright = (self.sw - self.sh.per(5), self.sh - self.sh.per(25))
+        self.add_bg(self.bg)
+        blank_bar = Sprite(
+            "UI/raw/UI_Flat_FrameSlot01a.png", (self.sw.per(25), self.sh.per(2))
+        )
+        self.fill_bar1 = Sprite(
+            "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(25), self.sh.per(2))
+        )
+        self.fill_bar1.rect.bottomright = blank_bar.rect.bottomright = (
+            self.sw - self.sh.per(5),
+            self.sh - self.sh.per(25),
+        )
+        self.add_passive(blank_bar)
+        self.bg2 = Sprite(
+            "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(28), self.sh.per(15))
+        )
+        self.bg2.image = color.recol(self.bg2.image, (120, 120, 120))
+        self.bg2.rect.topleft = (self.sh.per(40) + self.sh.per(3), self.sh.per(3))
+        blank_bar = Sprite(
+            "UI/raw/UI_Flat_FrameSlot01a.png", (self.sw.per(25), self.sh.per(2))
+        )
+        self.add_bg(self.bg2)
+        self.fill_bar2 = Sprite(
+            "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(25), self.sh.per(2))
+        )
+        blank_bar.rect.topleft = self.fill_bar2.rect.topleft = (
+            self.sh.per(40) + self.sh.per(3),
+            self.sh.per(3),
+        )
+        self.add_passive(blank_bar)
+
+    def load(self, mon1, mon2):
+        self.mon1 = mon1
+        n1 = Text(mon1["name"], 32, "Azure")
+        n1.rect.topleft = (
+            self.bg.rect.left + self.sh.per(3),
+            self.bg.rect.top + self.sh.per(3),
+        )
+        l1 = Text(f"lvl: {mon1['level']}", 32, "Azure")
+        l1.rect.topright = (
+            self.bg.rect.right - self.sh.per(3),
+            self.bg.rect.top + self.sh.per(3),
+        )
+        self.add_passive(n1)
+        self.add_passive(l1)
+        self.mon2 = mon2
+        n2 = Text(mon2["name"], 32, "Azure")
+        n2.rect.bottomright = (
+            self.bg2.rect.right - self.sh.per(3),
+            self.bg2.rect.bottom - self.sh.per(3),
+        )
+        l2 = Text(f"lvl: {mon2['level']}", 32, "Azure")
+        l2.rect.bottomleft = (
+            self.bg2.rect.left + self.sh.per(3),
+            self.bg2.rect.bottom - self.sh.per(3),
+        )
+        self.add_passive(n2)
+        self.add_passive(l2)
+
+    def update_content(self, dt: float):
+        # --- BAR 1 ---
+        ratio1 = self.mon1["chp"] / self.mon1["hp"]
+        self.fill_bar1.rect.width = int(self.sw.per(25) * ratio1)
+        Logger.debug(ratio1)
+
+        self.fill_bar1.rect.bottomright = (
+            self.sw.per(100) - self.sh.per(5),
+            self.sh.per(100) - self.sh.per(25),
+        )
+
+        # --- BAR 2 ---
+        ratio2 = self.mon2["chp"] / self.mon2["hp"]
+        self.fill_bar2.rect.width = int(self.sw.per(25) * ratio2)
+        Logger.debug(ratio2)
+
+        self.fill_bar2.rect.topleft = (
+            self.sh.per(40) + self.sh.per(3),
+            self.sh.per(3),
+        )
+
+    def draw_content(self, screen: pg.Surface):
+        self.fill_bar1.draw(screen)
+        self.fill_bar2.draw(screen)
 
 
 class ActionOverlay(Overlay):
@@ -137,7 +219,7 @@ class ActionOverlay(Overlay):
         if chance < 95:
             scene_manager.change_scene("game")
         else:
-            scene_manager.change_scene("battle")
+            pass
 
 
 class MoveOverlay(Overlay):
@@ -252,7 +334,7 @@ class MoveOverlay(Overlay):
     def inmove(self, moves: list[dict]):
         self.moves = moves
         for i in range(len(self.moves)):
-            self.labels[i].change_text(self.moves[i]["name"])
+            self.labels[i].change_text(self.moves[i]["name"], "center")
             self.add_passive(self.labels[i])
         for i in range(len(self.moves), 4):
             self.add_passive(self.labels[i])

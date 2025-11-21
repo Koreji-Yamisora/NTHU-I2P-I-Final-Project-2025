@@ -121,22 +121,25 @@ class Bag:
     def monster_slot(self):
         self.monster_data.clear()
         for idx, monster in enumerate(self.monsters):
-            sprite = Sprite(pokedex.data[monster["id"]]["sprte_path"], (64, 64))
-            sprite.rect.center = self.mon_slots[idx].center
+            sprite = Sprite(pokedex.data[monster["id"]]["sprte_path"], (72, 72))
+            sprite.rect.center = (
+                self.mon_slots[idx].centerx + crd(self.mon_slots[idx].width).per(15),
+                self.mon_slots[idx].centery + crd(self.mon_slot_height).per(25),
+            )
             name = Text(monster["name"], 24, "azure")
             name.rect.topleft = (
-                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
+                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(8),
                 self.mon_slots[idx].top + crd(self.mon_slot_height).per(5),
             )
             hp = Text(f"HP: {monster['chp']}/{monster['hp']}", 24, "azure")
             hp.rect.topleft = (
-                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
+                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(8),
                 self.mon_slots[idx].top + crd(self.mon_slot_height).per(35),
             )
 
             level = Text("Level: " + str(monster["level"]), 24, "azure")
             level.rect.topleft = (
-                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(5),
+                self.mon_slots[idx].left + crd(self.mon_slots[idx].width).per(8),
                 self.mon_slots[idx].top + crd(self.mon_slot_height).per(65),
             )
             self.monster_data.append((sprite, name, hp, level))
@@ -162,7 +165,7 @@ class Bag:
         self.item_data.clear()
         for idx, item in enumerate(self._items_data):
             if idx < 8:
-                sprite = Sprite(item["sprite_path"], (48, 48))
+                sprite = Sprite(item["sprite_path"], (64, 64))
                 sprite.rect.center = self.item_slots[idx].center
                 name = Text(item["name"], 24, "azure")
                 name.rect.left = self.item_slots[idx].left + crd(

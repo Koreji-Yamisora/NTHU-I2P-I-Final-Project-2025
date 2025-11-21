@@ -45,12 +45,12 @@ class Text:
         self.text = self.font.render(text, True, color)
         self.rect = self.text.get_rect()
 
-    def draw(self, screen: pg.Surface, camera: Optional[PositionCamera] = None):
+    def draw(self, screen: pg.Surface):
         screen.blit(self.text, self.rect)
 
-    def change_text(self, text: str):
+    def change_text(self, text: str, pos: str = "topleft"):
         self.font = resource_manager.get_font("Minecraft.ttf", self.size)
         self.text = self.font.render(text, True, self.color)
         rect = self.text.get_rect()
-        rect.topleft = self.rect.topleft
+        setattr(rect, pos, getattr(self.rect, pos))
         self.rect = rect

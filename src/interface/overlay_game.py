@@ -56,12 +56,8 @@ class SettingOverlay(Overlay):
         self.add_passive(voluem_label)
 
         def mute_audio(state):
-            # state=True means toggle is ON (unmuted), state=False means toggle is OFF (muted)
-            GameSettings.AUDIO_MUTE = (
-                not state
-            )  # Invert: if toggle is ON, audio is NOT muted
+            GameSettings.AUDIO_MUTE = not state
             sound_manager.refresh()
-            # Also update current Bgh.gm if it exists
             if sound_manager.current_bgm:
                 if GameSettings.AUDIO_MUTE:
                     sound_manager.current_bgm.set_volume(0)

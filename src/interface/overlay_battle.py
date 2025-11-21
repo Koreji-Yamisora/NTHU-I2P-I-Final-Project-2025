@@ -59,8 +59,8 @@ class HealthOverlay(Overlay):
         self.level2_text = None
 
     def load(self):
-        self.mon1 = scene_manager._current_scene.monster1
-        self.mon2 = scene_manager._current_scene.monster2
+        self.mon1 = getattr(scene_manager._current_scene, "monster1")
+        self.mon2 = getattr(scene_manager._current_scene, "monster2")
 
         # Remove old text labels if they exist
         if self.name1_text:

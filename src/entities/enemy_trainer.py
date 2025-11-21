@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pygame
 from enum import Enum
 from dataclasses import dataclass
@@ -9,6 +10,8 @@ from src.sprites import Sprite
 from src.core import GameManager
 from src.core.services import input_manager, scene_manager
 from src.utils import GameSettings, Direction, Position, PositionCamera
+
+import random
 
 
 class EnemyTrainerClassification(Enum):
@@ -28,6 +31,7 @@ class EnemyTrainer(Entity):
     warning_sign: Sprite
     detected: bool
     los_direction: Direction
+    level: int
 
     @override
     def __init__(
@@ -38,8 +42,10 @@ class EnemyTrainer(Entity):
         classification: EnemyTrainerClassification = EnemyTrainerClassification.STATIONARY,
         max_tiles: int | None = 2,
         facing: Direction | None = None,
+        level: int = random.randint(20, 40),
     ) -> None:
         super().__init__(x, y, game_manager)
+        self.level = level
         self.classification = classification
         self.max_tiles = max_tiles
         if classification == EnemyTrainerClassification.STATIONARY:
@@ -103,7 +109,6 @@ class EnemyTrainer(Entity):
         enemy_rect = self.animation.rect
         los_length = self.max_tiles * GameSettings.TILE_SIZE
 
-        # Create a rectangle extending from the enemy in the direction they're facing
         if self.los_direction == Direction.UP:
             los_rect = pygame.Rect(
                 enemy_rect.centerx - enemy_rect.width // 2,
@@ -183,3 +188,15 @@ class EnemyTrainer(Entity):
         base["facing"] = self.direction.name
         base["max_tiles"] = self.max_tiles
         return base
+
+    def generate_party(self, number: int, level: int):
+        pass
+        from src.data import pokedex
+        import random
+
+        party = []
+
+        for i in range(6):
+            pokemon = random.choice(list(pokedex.data.keys()))
+            party.append(pokemon)
+        return party

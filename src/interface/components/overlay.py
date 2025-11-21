@@ -24,6 +24,7 @@ class Overlay(UIComponent):
         self.overlay_alpha = overlay_alpha
         self.active_components = []
         self.components = []
+        self.components2 = []
         self.backgrounds = []
 
         if self.overlay_alpha:
@@ -38,6 +39,9 @@ class Overlay(UIComponent):
 
     def add_passive(self, component: Sprite | Text) -> None:
         self.components.append(component)
+
+    def add_passive2(self, component: Sprite | Text) -> None:
+        self.components2.append(component)
 
     def add_bg(self, bg: Sprite) -> None:
         self.backgrounds.append(bg)
@@ -69,10 +73,11 @@ class Overlay(UIComponent):
                 screen.blit(self.dark_overlay, (0, 0))
             for b in self.backgrounds:
                 b.draw(screen)
-            if self.is_passive:
+            if self.is_active:
                 for c in self.active_components:
                     c.draw(screen)
-                for t in self.components:
+            if self.is_passive:
+                for t in [*self.components, *self.components2]:
                     t.draw(screen)
             self.draw_content(screen)
 

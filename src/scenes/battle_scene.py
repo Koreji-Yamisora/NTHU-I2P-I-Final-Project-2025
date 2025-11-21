@@ -46,6 +46,11 @@ class BattleScene(Scene):
         self.action_overlay.is_active = True
         self.action_overlay.is_passive = True
 
+        # NEW: Add turn management
+        self.player_turn = True
+        self.waiting_for_action = True
+        self.processing_turn = False
+
     def load_data(self):
         if not gh.gm:
             gh.load()

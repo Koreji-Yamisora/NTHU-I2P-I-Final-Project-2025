@@ -1,10 +1,6 @@
-import pygame as pg
-from src.utils import GameSettings, crd, Logger, color
+from src.utils import GameSettings, crd, color, Logger
 from src.interface.components import Overlay, Button
 from src.core.services import (
-    input_manager,
-    resource_manager,
-    sound_manager,
     scene_manager,
 )
 from src.sprites import Sprite, Text
@@ -18,12 +14,14 @@ class HealthOverlay(Overlay):
         self.inited = False
         self.sw = crd(GameSettings.SCREEN_WIDTH)
         self.sh = crd(GameSettings.SCREEN_HEIGHT)
+
         self.bg = Sprite(
             "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(28), self.sh.per(15))
         )
         self.bg.image = color.recol(self.bg.image, (120, 120, 120))
         self.bg.rect.bottomright = (self.sw - self.sh.per(5), self.sh - self.sh.per(25))
         self.add_bg(self.bg)
+
         blank_bar = Sprite(
             "UI/raw/UI_Flat_FrameSlot01a.png", (self.sw.per(25), self.sh.per(2))
         )
@@ -35,77 +33,82 @@ class HealthOverlay(Overlay):
             self.sh - self.sh.per(25),
         )
         self.add_passive(blank_bar)
+
         self.bg2 = Sprite(
             "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(28), self.sh.per(15))
         )
         self.bg2.image = color.recol(self.bg2.image, (120, 120, 120))
         self.bg2.rect.topleft = (self.sh.per(40) + self.sh.per(3), self.sh.per(3))
-        blank_bar = Sprite(
+        self.add_bg(self.bg2)
+
+        blank_bar2 = Sprite(
             "UI/raw/UI_Flat_FrameSlot01a.png", (self.sw.per(25), self.sh.per(2))
         )
-        self.add_bg(self.bg2)
         self.fill_bar2 = Sprite(
             "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(25), self.sh.per(2))
         )
-        blank_bar.rect.topleft = self.fill_bar2.rect.topleft = (
+        blank_bar2.rect.topleft = self.fill_bar2.rect.topleft = (
             self.sh.per(40) + self.sh.per(3),
             self.sh.per(3),
         )
-        self.add_passive(blank_bar)
+        self.add_passive(blank_bar2)
 
-    def load(self, mon1, mon2):
-        self.mon1 = mon1
-        n1 = Text(mon1["name"], 32, "Azure")
-        n1.rect.topleft = (
+        self.name1_text = None
+        self.level1_text = None
+        self.name2_text = None
+        self.level2_text = None
+
+    def load(self):
+        self.mon1 = scene_manager._current_scene.monster1
+        self.mon2 = scene_manager._current_scene.monster2
+
+        # Remove old text labels if they exist
+        if self.name1_text:
+            self.components.remove(self.name1_text)
+        if self.level1_text:
+            self.components.remove(self.level1_text)
+        if self.name2_text:
+            self.components.remove(self.name2_text)
+        if self.level2_text:
+            self.components.remove(self.level2_text)
+
+        # Create new text labels for monster 1
+        self.name1_text = Text(self.mon1["name"], 32, "Azure")
+        self.name1_text.rect.topleft = (
             self.bg.rect.left + self.sh.per(3),
             self.bg.rect.top + self.sh.per(3),
         )
-        l1 = Text(f"lvl: {mon1['level']}", 32, "Azure")
-        l1.rect.topright = (
+        self.level1_text = Text(f"lvl: {self.mon1['level']}", 32, "Azure")
+        self.level1_text.rect.topright = (
             self.bg.rect.right - self.sh.per(3),
             self.bg.rect.top + self.sh.per(3),
         )
-        self.add_passive(n1)
-        self.add_passive(l1)
-        self.mon2 = mon2
-        n2 = Text(mon2["name"], 32, "Azure")
-        n2.rect.bottomright = (
+        self.add_passive(self.name1_text)
+        self.add_passive(self.level1_text)
+
+        # Create new text labels for monster 2
+        self.name2_text = Text(self.mon2["name"], 32, "Azure")
+        self.name2_text.rect.bottomright = (
             self.bg2.rect.right - self.sh.per(3),
             self.bg2.rect.bottom - self.sh.per(3),
         )
-        l2 = Text(f"lvl: {mon2['level']}", 32, "Azure")
-        l2.rect.bottomleft = (
+        self.level2_text = Text(f"lvl: {self.mon2['level']}", 32, "Azure")
+        self.level2_text.rect.bottomleft = (
             self.bg2.rect.left + self.sh.per(3),
             self.bg2.rect.bottom - self.sh.per(3),
         )
-        self.add_passive(n2)
-        self.add_passive(l2)
+        self.add_passive(self.name2_text)
+        self.add_passive(self.level2_text)
 
     def update_content(self, dt: float):
-        # --- BAR 1 ---
-        # Store the original left position before changing width
-        # Calculate left from the right anchor point minus full bar width
-        original_left = self.sw.per(100) - self.sh.per(5) - self.sw.per(25)
-        original_bottom = self.sh.per(100) - self.sh.per(25)
-
         ratio1 = self.mon1["chp"] / self.mon1["hp"]
         self.fill_bar1.rect.width = int(self.sw.per(25) * ratio1)
 
-        # Now set the position after width change - anchor to bottomleft so it shrinks right to left
-        self.fill_bar1.rect.bottomleft = (original_left, original_bottom)
-
-        # --- BAR 2 ---
-        # Store the original left position before changing width
-        original_left = self.sh.per(40) + self.sh.per(3)
-        original_top = self.sh.per(3)
-
+        Logger.debug(self.fill_bar1.rect.width, self.fill_bar1.rect.x)
         ratio2 = self.mon2["chp"] / self.mon2["hp"]
         self.fill_bar2.rect.width = int(self.sw.per(25) * ratio2)
 
-        # Now set the position after width change
-        self.fill_bar2.rect.topleft = (original_left, original_top)
-
-    def draw_content(self, screen: pg.Surface):
+    def draw_content(self, screen) -> None:
         self.fill_bar1.draw(screen)
         self.fill_bar2.draw(screen)
 
@@ -146,7 +149,6 @@ class ActionOverlay(Overlay):
             bg.rect.bottom - bg.rect.height // 2,
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
-            lambda: self.action(0),
         )
         self.add_active(run_button)
         switch_button = Button(

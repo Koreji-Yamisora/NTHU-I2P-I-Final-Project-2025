@@ -1,6 +1,7 @@
 from enum import FlagBoundary
 import pygame as pg
 
+from src import data
 from src.utils import GameSettings
 from src.sprites import Sprite, Text, BackgroundSprite
 from src.scenes.scene import Scene
@@ -22,11 +23,13 @@ import importlib
 from src.data import poketype, pokedex
 import random
 
+from dataclasses import dataclass
+
 
 class BattleScene(Scene):
     background: BackgroundSprite
-    m1_sprite: Sprite
-    m2_sprite: Sprite
+    monster1: dict
+    monster2: dict
 
     def __init__(self):
         super().__init__()
@@ -58,7 +61,7 @@ class BattleScene(Scene):
             self.items = gh.gm.bag.get_items()
             self.turn = True
             self.move_overlay.inmove(self.monster1["move"])
-            self.health_overlay.load(self.monster1, self.monster2)
+            self.health_overlay.load()
 
     def img(self):
         wid, hid = crd(GameSettings.SCREEN_WIDTH), crd(GameSettings.SCREEN_HEIGHT)
@@ -109,7 +112,7 @@ class BattleScene(Scene):
         weather = 1
         critical = 1
         ran = random.randint(85, 100) / 100
-        acu = 1 if random.randint(0, 100) > move["acc"] else 0
+        acu = 1 if random.randint(0, 100) < move["acc"] else 0
         stab = 1.5 if self.monster1["type"] == move["type"] else 1
         ty: float = poketype.effective(move["type"], self.monster2["type"])
         vai = target * weather * critical * ran * stab * ty * acu
@@ -125,7 +128,7 @@ class BattleScene(Scene):
                 / 50
                 + 2
             ) * vai
-        Logger.debug(dmg)
+            Logger.debug("dmg: " + str(dmg))
         return int(dmg)
 
     def eff_mes(self, type: float, acu: int):
@@ -154,7 +157,7 @@ class BattleScene(Scene):
 
         if self.monster2["chp"] < 0:
             self.monster2["chp"] = 0
-        self.health_overlay.load(self.monster1, self.monster2)
+        self.health_overlay.load()
 
     @override
     def update(self, dt: float) -> None:
@@ -165,7 +168,7 @@ class BattleScene(Scene):
             self.action_overlay.open()
         if input_manager.key_pressed(pg.K_h):
             self.heal_all()
-            self.health_overlay.load(self.monster1, self.monster2)
+            self.health_overlay.load()
 
             self.cd = 3
         self.cd -= dt

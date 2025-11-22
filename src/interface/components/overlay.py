@@ -1,17 +1,19 @@
 from __future__ import annotations
 import pygame as pg
 from typing import Callable, override, Generator
+
+from src.sprites.background import BackgroundSprite
 from .component import UIComponent
 from .button import Button, ToggleButton, Slider
 from src.utils import GameSettings
-from src.sprites import Text, Sprite
+from src.sprites import Text, Sprite, ColorSprite
 
 
 class Overlay(UIComponent):
     is_open: bool
     active_components: list[Button | ToggleButton | Slider]
-    components: list[Text | Sprite]
-    backgrounds: list[Sprite]
+    components: list[Text | Sprite | ColorSprite]
+    backgrounds: list[Sprite | ColorSprite | BackgroundSprite]
     dark_overlay: pg.Surface
 
     def __init__(
@@ -19,8 +21,7 @@ class Overlay(UIComponent):
         overlay_alpha: int | None = None,
     ):
         self.is_open = False
-        self.is_active = True
-        self.is_passive = True
+        self.is_active = False
         self.overlay_alpha = overlay_alpha
         self.active_components = []
         self.components = []
@@ -37,13 +38,13 @@ class Overlay(UIComponent):
     def add_active(self, component: Button | ToggleButton | Slider) -> None:
         self.active_components.append(component)
 
-    def add_passive(self, component: Sprite | Text) -> None:
+    def add_passive(self, component: Sprite | Text | ColorSprite) -> None:
         self.components.append(component)
 
     def add_passive2(self, component: Sprite | Text) -> None:
         self.components2.append(component)
 
-    def add_bg(self, bg: Sprite) -> None:
+    def add_bg(self, bg: Sprite | ColorSprite | BackgroundSprite) -> None:
         self.backgrounds.append(bg)
 
     def open(self) -> None:
@@ -73,12 +74,12 @@ class Overlay(UIComponent):
                 screen.blit(self.dark_overlay, (0, 0))
             for b in self.backgrounds:
                 b.draw(screen)
-            if self.is_active:
-                for c in self.active_components:
-                    c.draw(screen)
-            if self.is_passive:
-                for t in [*self.components, *self.components2]:
-                    t.draw(screen)
+            for c in self.active_components:
+                c.draw(screen)
+            for t in self.components:
+                t.draw(screen)
+            for t in self.components2:
+                t.draw(screen)
             self.draw_content(screen)
 
     def update_content(self, dt: float) -> None:

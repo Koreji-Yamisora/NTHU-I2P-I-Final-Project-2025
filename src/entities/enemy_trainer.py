@@ -12,6 +12,7 @@ from src.core.services import input_manager, scene_manager
 from src.utils import GameSettings, Direction, Position, PositionCamera
 
 import random
+from src.utils.generate import new_iv, new_ev
 
 
 class EnemyTrainerClassification(Enum):
@@ -65,17 +66,14 @@ class EnemyTrainer(Entity):
             Position(x + GameSettings.TILE_SIZE // 4, y - GameSettings.TILE_SIZE // 2)
         )
         self.detected = False
-        self.hitbox = self.animation.rect.copy()
-        self.hitbox.inflate(
-            self.animation.rect.width * 2, self.animation.rect.height * 2
-        )
+        self.monsters = []
 
     @override
     def update(self, dt: float) -> None:
         self._movement.update(self, dt)
         self._has_los_to_player()
         if self.detected and input_manager.key_pressed(pygame.K_SPACE):
-            scene_manager.change_scene("battle")
+            self.interact()
         self.animation.update_pos(self.position)
 
     @override
@@ -89,6 +87,11 @@ class EnemyTrainer(Entity):
                 pygame.draw.rect(
                     screen, (255, 255, 0), camera.transform_rect(los_rect), 1
                 )
+
+    def interact(self):
+        if not self.monsters:
+            self.generate_party(40)
+            scene_manager.change_scene("battle")
 
     def _set_direction(self, direction: Direction) -> None:
         self.direction = direction
@@ -189,14 +192,84 @@ class EnemyTrainer(Entity):
         base["max_tiles"] = self.max_tiles
         return base
 
-    def generate_party(self, number: int, level: int):
-        pass
+    def generate_party(self, max_level: int):
         from src.data import pokedex
         import random
 
+        def bias_gen(low, high):
+            bias = random.random() ** 0.3
+            return low + int((high - low + 1) * bias)
+
         party = []
 
-        for i in range(6):
+        for i in range(random.randint(1, 6)):
             pokemon = random.choice(list(pokedex.data.keys()))
             party.append(pokemon)
-        return party
+        print(party)
+
+        stat = ("atk", "def", "spa", "spd", "spe")
+        mod = 1
+        self.monsters = []
+
+        for id in party:
+            level = bias_gen(1, max_level)
+            mon = {}
+            mon["EV"] = new_ev(level)
+            mon["IV"] = new_iv()
+
+            base = pokedex.data[id]
+            hp = (
+                int(
+                    (2 * base["hp"] + mon["IV"]["hp"] + mon["EV"]["hp"] / 4)
+                    * level
+                    / 100
+                )
+                + level
+                + 10
+            )
+            stats = []
+            for s in stat:
+                stats.append(
+                    (
+                        int(
+                            (2 * base[s] + mon["IV"][s] + mon["EV"][s] / 4)
+                            * level
+                            / 100
+                        )
+                        + 5
+                    )
+                    * mod
+                )
+            atk, defen, spa, spd, spe = stats
+
+            self.monsters.append(
+                {
+                    "id": id,
+                    "name": pokedex.data[id]["name"],
+                    "level": level,
+                    "chp": hp,
+                    "hp": hp,
+                    "atk": atk,
+                    "def": defen,
+                    "spa": spa,
+                    "spd": spd,
+                    "spe": spe,
+                    "type": base["type"],
+                    "move": temp_move(),
+                }
+            )
+
+        print(self.monsters)
+        return self.monsters
+
+
+def temp_move():
+    return [
+        {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95,
+        }
+    ]

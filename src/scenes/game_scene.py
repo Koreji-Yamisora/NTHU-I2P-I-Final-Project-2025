@@ -87,8 +87,8 @@ class GameScene(Scene):
             if gh.gm.player:
                 gh.gm.player.update(dt)
                 for enemy in gh.gm.current_enemy_trainers:
-                    if gh.gm.player.animation.rect.colliderect(enemy.hitbox):
-                        enemy.detected = True
+                    if enemy.detected:
+                        gh.gm.current_fight = enemy
                     enemy.update(dt)
 
             gh.gm.bag.update(dt)

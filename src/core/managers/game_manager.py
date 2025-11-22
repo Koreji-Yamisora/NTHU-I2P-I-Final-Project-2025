@@ -46,6 +46,7 @@ class GameManager:
         self.enemy_trainers = enemy_trainers
         self.bag = bag if bag is not None else Bag([], [])
         self.player_spawns = player_spawns if player_spawns is not None else {}
+        self.current_fight: EnemyTrainer | None = None
 
         # Check If you should change scene
         self.should_change_scene = False

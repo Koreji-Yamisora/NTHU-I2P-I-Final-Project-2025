@@ -25,15 +25,14 @@ def new_ev(level, exp=0.45) -> dict[str, int]:
     return ev
 
 
-def new_iv():
+def new_iv() -> dict[str, int]:
     STAT = ("hp", "atk", "def", "spa", "spd", "spe")
     iv = {}
     stat_limit = 31
 
     for stat in STAT:
         iv[stat] = random.randint(0, stat_limit)
-
-        return iv
+    return iv
 
 
 def worker(exp):

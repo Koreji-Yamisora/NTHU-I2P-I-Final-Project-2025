@@ -4,6 +4,26 @@ from src.utils import Position, PositionCamera
 from typing import Optional
 
 
+class ColorSprite:
+    image: pg.Surface
+    rect: pg.Rect
+
+    def __init__(
+        self, color: tuple[int, int, int] | str, size: tuple[int, int], alpha: int = 255
+    ):
+        self.image = pg.Surface(size)
+        self.image.set_alpha(alpha)
+        self.image.fill(color)
+
+        self.rect = self.image.get_rect()
+
+    def draw(self, screen: pg.Surface, camera: Optional[PositionCamera] = None):
+        if camera is not None:
+            screen.blit(self.image, camera.transform_rect(self.rect))
+        else:
+            screen.blit(self.image, self.rect)
+
+
 class Sprite:
     image: pg.Surface
     rect: pg.Rect

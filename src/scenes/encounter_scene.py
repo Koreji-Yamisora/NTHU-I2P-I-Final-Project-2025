@@ -18,7 +18,7 @@ from src.interface.components import Overlay
 from src.core.managers import GameManager
 from src.core import gh
 from src.utils import crd, Logger, color
-from src.interface import overlay_battle as ob
+from src.interface import overlay_encounter as oe
 import importlib
 from src.data import poketype, pokedex
 import random
@@ -26,7 +26,7 @@ import random
 from dataclasses import dataclass
 
 
-class BattleScene(Scene):
+class EncounterScene(Scene):
     background: BackgroundSprite
     monster1: dict
     monster2: dict
@@ -37,7 +37,9 @@ class BattleScene(Scene):
         self.exit_cd = 0.0
         self.pfainted = False
         self.efainted = False
+        self.catching = False
 
+        self.done = False
         self.win = False
         self.lose = False
         self.swapping = False
@@ -62,11 +64,11 @@ class BattleScene(Scene):
         self._init()
 
     def _init(self):
-        self.item_overlay = ob.ItemOverlay()
-        self.action_overlay = ob.ActionOverlay()
-        self.move_overlay = ob.MoveOverlay()
-        self.health_overlay = ob.HealthOverlay()
-        self.switch_UI = ob.SwitchOverlay()
+        self.item_overlay = oe.ItemOverlay()
+        self.action_overlay = oe.ActionOverlay()
+        self.move_overlay = oe.MoveOverlay()
+        self.health_overlay = oe.HealthOverlay()
+        self.switch_UI = oe.SwitchOverlay()
 
     def load_data(self):
         if not gh.gm:
@@ -76,7 +78,7 @@ class BattleScene(Scene):
         else:
             self._init()
 
-            self.current = 0
+            self.current = 4
             self.enemy = 0
             self.action_overlay.is_active = True
             self.action_overlay.is_passive = True
@@ -86,7 +88,7 @@ class BattleScene(Scene):
             self.waiting_for_action = True
             self.clear()
             self.monster1: dict = gh.gm.bag.monsters[self.current]
-            print(gh.gm.current_fight.monsters)
+            Logger.debug(f"{gh.gm.current_fight.monsters}")
             self.monster2: dict = gh.gm.current_fight.monsters[self.enemy]
             self.img()
 
@@ -100,7 +102,8 @@ class BattleScene(Scene):
                 self.bg3.rect.left + sh.per(3),
                 self.bg3.rect.top + sh.per(2),
             )
-        self.switch_UI.init()
+            self.item_overlay.init()
+            self.switch_UI.init()
 
     def img(self):
         wid, hid = crd(GameSettings.SCREEN_WIDTH), crd(GameSettings.SCREEN_HEIGHT)
@@ -175,7 +178,6 @@ class BattleScene(Scene):
 
         self.img()
         self.notichange(f"You sent out {self.monster1['name']}!")
-        self.move_overlay.inmove(self.monster1["move"])
 
     def switch_enemy(self, n: int):
         """Switch to a new enemy monster"""
@@ -186,6 +188,7 @@ class BattleScene(Scene):
         self.health_overlay.load()
 
         self.img()
+
         self.notichange(f"Enemy sent out {self.monster2['name']}!")
 
     def attack(self, attacker, defender, move):
@@ -262,7 +265,6 @@ class BattleScene(Scene):
             else:
                 self.health_overlay.health_update()
         self.save()
-        self.switch_UI.init()
 
     def check_health(self):
         h = False
@@ -308,35 +310,69 @@ class BattleScene(Scene):
     def try_switching(self, dt):
         if not self.health_overlay.animating and self.efainted:
             if self.next_enemy is not None:
-                # Switch to next enemy
                 Logger.debug(f"Switching to next enemy: {self.next_enemy}")
                 self.switch_enemy(self.next_enemy)
                 self.player_turn = True
                 self.waiting_for_action = True
             else:
                 self.win = True
-                self.victory = ob.Victory(1)
+                self.victory = oe.Victory(1)
                 Logger.debug("Victory!")
             self.efainted = False
 
     def wait_exit(self, dt):
         self.exit_cd += dt
-        if self.exit_cd >= 3 and (self.win or self.lose):
-            self.win = self.lose = False
+        self.action_overlay.close()
+        self.move_overlay.close()
+        self.item_overlay.close()
+        self.switch_UI.close()
+        if self.exit_cd >= 3 and (self.win or self.lose or self.done):
+            self.win = self.lose = self.done = False
             self.exit_cd = 0
             scene_manager.change_scene("game")
+
+    def do_catching(self):
+        chance = 85
+        c = random.randint(0, 100)
+        if c < chance:
+            self.notichange(["Catching...", "Catched Succesfully"])
+            self.catched()
+        else:
+            self.notichange(["Catching...", "Fail to catch"])
+            self.catching = False
+
+    def catched(self):
+        bag = getattr(gh, "gm").bag._monsters_data
+        m = self.monster2
+        pokemon = {
+            "id": m["id"],
+            "name": m["name"],
+            "level": m["level"],
+            "hp": m["chp"],
+            "IV": m["IV"],
+            "EV": m["EV"],
+            "move": m["move"],
+        }
+        bag.append(pokemon)
+        Logger.debug(f"monster : {bag[-1]}")
+        self.done = True
+        self.catching = False
 
     @override
     def update(self, dt: float) -> None:
         self.save()
         self.try_switching(dt)
         self.try_team(dt)
-        if self.win or self.lose:
+        if self.win or self.lose or self.done:
             if not self.health_overlay.animating:
                 self.wait_exit(dt)
+
         else:
             if self.player_turn and not self.health_overlay.animating:
                 if self.waiting_for_action:
+                    self.move_overlay.close()
+                    self.item_overlay.close()
+                    self.switch_UI.close()
                     self.action_overlay.open()
                     if self.action_overlay.is_move:
                         self.action_overlay.close()
@@ -350,10 +386,9 @@ class BattleScene(Scene):
 
                     self.switch_UI.forced = False
                     if self.action_overlay.is_switch:
-                        if not self.switch_UI.is_open:
-                            self.switch_UI.init()
-                            self.switch_UI.open()
+                        self.switch_UI.open()
                         self.action_overlay.close()
+                        self.switch_UI.update(dt)
                         if self.switch_UI.selected:
                             self.waiting_for_action = False
                             self.switch_UI.selected = False
@@ -365,6 +400,9 @@ class BattleScene(Scene):
                         self.item_overlay.open()
                         self.item_overlay.update(dt)
                         if self.item_overlay.selected:
+                            if self.catching:
+                                print("catching")
+                                self.do_catching()
                             self.waiting_for_action = False
                             self.item_overlay.selected = False
                     else:
@@ -391,7 +429,6 @@ class BattleScene(Scene):
                     self.player_turn = True
                     self.cd = 0
 
-        self.switch_UI.update(dt)
         self.health_overlay.update(dt)
         self.text_update(dt)
 

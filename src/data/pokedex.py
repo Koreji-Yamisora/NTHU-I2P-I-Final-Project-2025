@@ -1,7 +1,8 @@
 class PokeDex:
     data = {
         1: {
-            "sprte_path": "menu_sprites/menusprite1.png",
+            "sprite_path": "menu_sprites/menusprite1.png",
+            "fight_path": "sprites/sprite1.png",
             "name": "Pikachu",
             "hp": 35,
             "atk": 55,
@@ -14,7 +15,8 @@ class PokeDex:
             "yield": {"spe": 2},
         },
         2: {
-            "sprte_path": "menu_sprites/menusprite2.png",
+            "sprite_path": "menu_sprites/menusprite2.png",
+            "fight_path": "sprites/sprite2.png",
             "name": "Charizard",
             "hp": 78,
             "atk": 84,
@@ -27,7 +29,8 @@ class PokeDex:
             "yield": {"spa": 3},
         },
         3: {
-            "sprte_path": "menu_sprites/menusprite3.png",
+            "sprite_path": "menu_sprites/menusprite3.png",
+            "fight_path": "sprites/sprite3.png",
             "name": "Blastoise",
             "hp": 79,
             "atk": 83,
@@ -40,7 +43,8 @@ class PokeDex:
             "yield": {"spd": 3},
         },
         4: {
-            "sprte_path": "menu_sprites/menusprite4.png",
+            "sprite_path": "menu_sprites/menusprite4.png",
+            "fight_path": "sprites/sprite4.png",
             "name": "Venusaur",
             "hp": 80,
             "atk": 82,
@@ -53,7 +57,8 @@ class PokeDex:
             "yield": {"spa": 2, "spd": 1},
         },
         5: {
-            "sprte_path": "menu_sprites/menusprite5.png",
+            "sprite_path": "menu_sprites/menusprite5.png",
+            "fight_path": "sprites/sprite5.png",
             "name": "Dragonite",
             "hp": 91,
             "atk": 134,

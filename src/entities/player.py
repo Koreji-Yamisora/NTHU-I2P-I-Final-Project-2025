@@ -1,11 +1,13 @@
 from __future__ import annotations
 import pygame as pg
 from .entity import Entity
-from src.core.services import input_manager
+from src.core.services import input_manager, scene_manager
 from src.utils import Position, PositionCamera, GameSettings, Logger, Direction
 from src.core import GameManager
 import math
 from typing import override
+from src.sprites import Sprite
+from src.utils.generate import generate_party
 
 
 class Player(Entity):
@@ -18,6 +20,13 @@ class Player(Entity):
         self.tp_cooldown = 0.0
         self.sm = False
         self.lr = True
+        self.bush_cd = 0.0
+        self.bush_dt = False
+        self.bush_enter = False
+        self.warning_sign = Sprite(
+            "exclamation.png",
+            (GameSettings.TILE_SIZE // 2, GameSettings.TILE_SIZE // 2),
+        )
 
     @override
     def update(self, dt: float) -> None:
@@ -131,11 +140,28 @@ class Player(Entity):
                         self.game_manager.switch_map(dest)
                         self.tp_cooldown = 0.5
 
+        # bush
+        self.warning_sign.update_pos(
+            Position(self.animation.rect.left + 16, self.animation.rect.top - 30)
+        )
+        self.bush_cd -= dt
+        if self.game_manager.check_bush(self.animation.rect) and self.bush_cd <= 0:
+            self.bush_dt = True
+            if input_manager.key_down(pg.K_SPACE):
+                getattr(scene_manager._current_scene, "bush").interact()
+
+                self.bush_cd = 2
+
+        else:
+            self.bush_dt = False
+
         super().update(dt)
 
     @override
     def draw(self, screen: pg.Surface, camera: PositionCamera) -> None:
         super().draw(screen, camera)
+        if self.bush_dt:
+            self.warning_sign.draw(screen, camera)
 
     @override
     def to_dict(self) -> dict[str, object]:
@@ -149,3 +175,17 @@ class Player(Entity):
             data["y"] * GameSettings.TILE_SIZE,
             game_manager,
         )
+
+
+class Bush:
+    def __init__(self) -> None:
+        self.monsters = None
+
+    def interact(self):
+        if not self.monsters:
+            self.monsters = generate_party(40, 1)
+            scene_manager.change_scene("encounter")
+        else:
+            self.monsters.clear()
+            self.monsters = generate_party(40, 1)
+            scene_manager.change_scene("encounter")

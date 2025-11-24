@@ -9,6 +9,7 @@ from src.sprites import Sprite
 from typing import override
 from src.interface.components import Button
 from src.interface import SettingOverlay, Inventory
+from src.entities.player import Bush
 
 from src.core.gm_helper import gh
 
@@ -23,6 +24,7 @@ class GameScene(Scene):
         super().__init__()
 
         gh.load()
+        self.bush = Bush()
 
         # Online Manager
         if GameSettings.IS_ONLINE:
@@ -90,6 +92,9 @@ class GameScene(Scene):
                     if enemy.detected:
                         gh.gm.current_fight = enemy
                     enemy.update(dt)
+                if gh.gm.player.bush_dt:
+                    gh.gm.current_fight = self.bush
+                    gh.gm.player.bush_enter = False
 
             gh.gm.bag.update(dt)
 

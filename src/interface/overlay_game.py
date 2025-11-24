@@ -32,6 +32,8 @@ class SettingOverlay(Overlay):
             sh.per(50),
         )
 
+        self.add_bg(self.bg)
+
         # Back button
         x = self.bg.rect.right - self.bgx.per(8)
         y = self.bg.rect.top + self.bgx.per(4)
@@ -127,9 +129,6 @@ class SettingOverlay(Overlay):
             input_manager.reset()
             self.close()
 
-    def draw_content(self, screen: pg.Surface) -> None:
-        self.bg.draw(screen)
-
 
 class Inventory(Overlay):
     bg: Sprite
@@ -197,6 +196,13 @@ class Inventory(Overlay):
         self.right_col_rect = pg.Rect(
             right_col_x, right_col_y, right_col_width, right_col_height
         )
+        if gh.gm:
+            gh.gm.bag.my_mon()
+            gh.gm.bag.add_monster_col(self.left_col_rect)
+            gh.gm.bag.add_item_col(self.right_col_rect)
+
+    def open(self):
+        super().open()
         if gh.gm:
             gh.gm.bag.my_mon()
             gh.gm.bag.add_monster_col(self.left_col_rect)

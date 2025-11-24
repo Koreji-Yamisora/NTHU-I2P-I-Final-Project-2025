@@ -53,6 +53,10 @@ class Sprite:
         self.rect.width = width
         self.image = pg.transform.scale(self.image, (width, self.rect.height))
 
+    def update_height(self, height: int):
+        self.rect.height = height
+        self.image = pg.transform.scale(self.image, (self.rect.width, height))
+
     def update_pos(self, pos: Position):
         self.rect.topleft = (round(pos.x), round(pos.y))
 

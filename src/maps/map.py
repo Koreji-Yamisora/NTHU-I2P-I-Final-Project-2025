@@ -65,6 +65,13 @@ class Map:
                 return True
         return False
 
+    def check_bush(self, rect: pg.Rect) -> bool:
+        for bush in self._bush:
+            if rect.colliderect(bush):
+                return True
+
+        return False
+
     def check_teleport(self, rect: pg.Rect) -> Teleport | None:
         for teleporter in self.teleporters:
             tp_rect = pg.Rect(

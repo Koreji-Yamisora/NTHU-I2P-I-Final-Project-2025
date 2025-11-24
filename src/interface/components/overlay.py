@@ -52,6 +52,12 @@ class Overlay(UIComponent):
         self.is_active = True
         self.is_passive = True
 
+    def clear(self):
+        self.active_components = []
+        self.components = []
+        self.components2 = []
+        self.backgrounds = []
+
     def close(self) -> None:
         self.is_open = False
 

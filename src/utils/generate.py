@@ -1,6 +1,78 @@
 import random
 
 
+def generate_party(max_level: int, party_size: int = 6):
+    from src.data import pokedex
+    import random
+
+    def bias_gen(low, high):
+        bias = random.random() ** 0.3
+        return low + int((high - low + 1) * bias)
+
+    party = []
+
+    for i in range(random.randint(1, party_size)):
+        pokemon = random.choice(list(pokedex.data.keys()))
+        party.append(pokemon)
+
+    stat = ("atk", "def", "spa", "spd", "spe")
+    mod = 1
+    monsters = []
+
+    for id in party:
+        level = bias_gen(1, max_level)
+        mon = {}
+        mon["EV"] = new_ev(level)
+        mon["IV"] = new_iv()
+
+        base = pokedex.data[id]
+        hp = (
+            int((2 * base["hp"] + mon["IV"]["hp"] + mon["EV"]["hp"] / 4) * level / 100)
+            + level
+            + 10
+        )
+        stats = []
+        for s in stat:
+            stats.append(
+                (int((2 * base[s] + mon["IV"][s] + mon["EV"][s] / 4) * level / 100) + 5)
+                * mod
+            )
+        atk, defen, spa, spd, spe = stats
+
+        monsters.append(
+            {
+                "id": id,
+                "name": pokedex.data[id]["name"],
+                "level": level,
+                "chp": hp,
+                "hp": hp,
+                "atk": atk,
+                "def": defen,
+                "spa": spa,
+                "spd": spd,
+                "spe": spe,
+                "type": base["type"],
+                "IV": mon["IV"],
+                "EV": mon["EV"],
+                "move": temp_move(),
+            }
+        )
+
+    return monsters
+
+
+def temp_move():
+    return [
+        {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95,
+        }
+    ]
+
+
 def new_ev(level, exp=0.45) -> dict[str, int]:
     STAT = ("hp", "atk", "def", "spa", "spd", "spe")
     ev = {}

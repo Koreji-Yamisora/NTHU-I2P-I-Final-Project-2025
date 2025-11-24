@@ -7,6 +7,7 @@ from src.scenes.menu_scene import MenuScene
 from src.scenes.game_scene import GameScene
 from src.scenes.setting_scene import SettingsScene
 from src.scenes.battle_scene import BattleScene
+from src.scenes.encounter_scene import EncounterScene
 
 
 class Engine:
@@ -37,6 +38,7 @@ class Engine:
         """
         scene_manager.register_scene("settings", SettingsScene())
         scene_manager.register_scene("battle", BattleScene())
+        scene_manager.register_scene("encounter", EncounterScene())
         scene_manager.change_scene("menu")
 
         self.update_ats()

@@ -41,7 +41,7 @@ class Bag:
 
     def get_item(self, idx):
         item = {}
-        item["sprite"] = Sprite(self._items_data[idx]["sprite_path"], (48, 48))
+        item["sprite"] = self._items_data[idx]["sprite_path"]
         item["name"] = self._items_data[idx]["name"]
         item["count"] = self._items_data[idx]["count"]
         return item
@@ -103,6 +103,7 @@ class Bag:
 
             self.monsters.append(
                 {
+                    "idx": i,
                     "id": mon["id"],
                     "name": mon["name"],
                     "level": mon["level"],
@@ -121,7 +122,7 @@ class Bag:
     def monster_slot(self):
         self.monster_data.clear()
         for idx, monster in enumerate(self.monsters):
-            sprite = Sprite(pokedex.data[monster["id"]]["sprte_path"], (72, 72))
+            sprite = Sprite(pokedex.data[monster["id"]]["sprite_path"], (72, 72))
             sprite.rect.center = (
                 self.mon_slots[idx].centerx + crd(self.mon_slots[idx].width).per(15),
                 self.mon_slots[idx].centery + crd(self.mon_slot_height).per(25),
@@ -187,6 +188,11 @@ class Bag:
 
     def update(self, dt: float):
         pass
+
+    def update_bag(self):
+        self.my_mon()
+        self.monster_slot()
+        self.item_slot()
 
     def draw(self, screen: pg.Surface):
         for bg in self.mbgs:

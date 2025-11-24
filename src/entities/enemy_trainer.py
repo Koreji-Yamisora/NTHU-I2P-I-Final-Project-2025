@@ -12,7 +12,7 @@ from src.core.services import input_manager, scene_manager
 from src.utils import GameSettings, Direction, Position, PositionCamera
 
 import random
-from src.utils.generate import new_iv, new_ev
+from src.utils.generate import new_iv, new_ev, generate_party
 
 
 class EnemyTrainerClassification(Enum):
@@ -90,7 +90,11 @@ class EnemyTrainer(Entity):
 
     def interact(self):
         if not self.monsters:
-            self.generate_party(40)
+            self.monsters = generate_party(40)
+            scene_manager.change_scene("battle")
+        else:
+            self.monsters.clear()
+            self.monsters = generate_party(40)
             scene_manager.change_scene("battle")
 
     def _set_direction(self, direction: Direction) -> None:
@@ -191,85 +195,3 @@ class EnemyTrainer(Entity):
         base["facing"] = self.direction.name
         base["max_tiles"] = self.max_tiles
         return base
-
-    def generate_party(self, max_level: int):
-        from src.data import pokedex
-        import random
-
-        def bias_gen(low, high):
-            bias = random.random() ** 0.3
-            return low + int((high - low + 1) * bias)
-
-        party = []
-
-        for i in range(random.randint(1, 6)):
-            pokemon = random.choice(list(pokedex.data.keys()))
-            party.append(pokemon)
-        print(party)
-
-        stat = ("atk", "def", "spa", "spd", "spe")
-        mod = 1
-        self.monsters = []
-
-        for id in party:
-            level = bias_gen(1, max_level)
-            mon = {}
-            mon["EV"] = new_ev(level)
-            mon["IV"] = new_iv()
-
-            base = pokedex.data[id]
-            hp = (
-                int(
-                    (2 * base["hp"] + mon["IV"]["hp"] + mon["EV"]["hp"] / 4)
-                    * level
-                    / 100
-                )
-                + level
-                + 10
-            )
-            stats = []
-            for s in stat:
-                stats.append(
-                    (
-                        int(
-                            (2 * base[s] + mon["IV"][s] + mon["EV"][s] / 4)
-                            * level
-                            / 100
-                        )
-                        + 5
-                    )
-                    * mod
-                )
-            atk, defen, spa, spd, spe = stats
-
-            self.monsters.append(
-                {
-                    "id": id,
-                    "name": pokedex.data[id]["name"],
-                    "level": level,
-                    "chp": hp,
-                    "hp": hp,
-                    "atk": atk,
-                    "def": defen,
-                    "spa": spa,
-                    "spd": spd,
-                    "spe": spe,
-                    "type": base["type"],
-                    "move": temp_move(),
-                }
-            )
-
-        print(self.monsters)
-        return self.monsters
-
-
-def temp_move():
-    return [
-        {
-            "name": "Quick Attack",
-            "type": "nor",
-            "cat": "Normal Attack",
-            "power": 60,
-            "acc": 95,
-        }
-    ]

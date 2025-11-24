@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.maps.map import Map
-    from src.entities.player import Player
+    from src.entities.player import Player, Bush
     from src.entities.enemy_trainer import EnemyTrainer
     from src.data.bag import Bag
 
@@ -16,7 +16,7 @@ class GameManager:
     # Entities
     player: Player | None
     enemy_trainers: dict[str, list[EnemyTrainer]]
-    bag: "Bag"
+    bag: Bag
 
     # Map properties
     current_map_key: str
@@ -46,7 +46,7 @@ class GameManager:
         self.enemy_trainers = enemy_trainers
         self.bag = bag if bag is not None else Bag([], [])
         self.player_spawns = player_spawns if player_spawns is not None else {}
-        self.current_fight: EnemyTrainer | None = None
+        self.current_fight: EnemyTrainer | Bush | None = None
 
         # Check If you should change scene
         self.should_change_scene = False
@@ -164,6 +164,11 @@ class GameManager:
             if rect.colliderect(entity.animation.rect):
                 return True
 
+        return False
+
+    def check_bush(self, rect: pg.Rect) -> bool:
+        if self.maps[self.current_map_key].check_bush(rect):
+            return True
         return False
 
     def save(self, path: str) -> None:

@@ -94,20 +94,20 @@ class HPbar(Overlay):
         """Animate the health bars"""
         if self.animating:
             self.elapsed += dt
-            t = min(self.elapsed / self.duration, 1.0)  # Clamp to 0-1
+            t = min(self.elapsed / self.duration, 1.0)
 
             new_width = int(
                 self.start_width + (self.target_width - self.start_width) * t
             )
 
             self.update_bar_color()
+
             self.fill_bar.update_bar(new_width)
 
             if t >= 1.0:
                 self.animating = False
 
     def update_bar_color(self):
-        # G100 -> Y50 -> R0
         if self.ratio > 0.5:
             t = (1.0 - self.ratio) * 2
             r = int(255 * t)
@@ -250,24 +250,20 @@ class SwitchOverlay(Overlay):
         super().__init__()
         self.selected = False
         self.next = None
-        self.forced = False
 
     def init(self):
-        getattr(scene_manager, "_current_scene").save()
         self.clear()
         self.selected = False
+        self.forced = False
         bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(80)))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
         b = bg.rect.copy()
         slot_height = b.height // 6
-        self.cur = getattr(scene_manager._current_scene, "monster1")
+        self.cur = getattr(scene_manager._current_scene, "current", None)
         monsters = getattr(gh, "gm").bag.monsters.copy()
-        for m in monsters:
-            if m["idx"] == self.cur["idx"]:
-                monsters.remove(m)
-                break
-        self.hp = []
+        monsters.pop(self.cur)
         self.monsters = monsters
+        self.hp = []
 
         bg.update_height(slot_height * len(monsters))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
@@ -364,6 +360,7 @@ class SwitchOverlay(Overlay):
 
     def update_content(self, dt: float):
         """Update HP bars to reflect current monster states"""
+
         current_monsters = getattr(gh, "gm").bag.monsters.copy()
 
         for idx, hp_bar in enumerate(self.hp):
@@ -392,7 +389,6 @@ class SwitchOverlay(Overlay):
 
     def action(self, idx):
         self.selected = True
-        self.forced = False
         Logger.debug(f"idx: {idx}")
         self.next = idx
 
@@ -575,13 +571,12 @@ class MoveOverlay(Overlay):
 
     def action(self, key):
         self.selected = True
-        if hasattr(scene_manager._current_scene, "move") and len(self.moves) > key:
+        if hasattr(scene_manager._current_scene, "move"):
             setattr(scene_manager._current_scene, "move", key)
             Logger.debug(f"Move {key} selected")
 
     def inmove(self, moves: list[dict]):
         self.moves = moves
-        self.passive_components = []
         for i in range(len(self.moves)):
             self.labels[i].change_text(self.moves[i]["name"], "center")
             self.add_passive(self.labels[i])
@@ -603,7 +598,7 @@ class ItemOverlay(Overlay):
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
         b = bg.rect.copy()
         slot_height = b.height // 6
-        items = getattr(gh, "gm").bag.get_items()
+        items = getattr(gh, "gm").bag._items_data
 
         bg.update_height(slot_height * len(items))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
@@ -633,7 +628,7 @@ class ItemOverlay(Overlay):
             )
             mbg.hitbox.bottom = b.bottom - slot_height * idx
             self.add_active(mbg)
-            sprite = Sprite(item["sprite"], (96, 96))
+            sprite = Sprite(item["sprite_path"], (64, 64))
             sprite.rect.center = (
                 mbg.hitbox.right - crd(mbg.hitbox.width).per(15),
                 mbg.hitbox.centery,
@@ -655,7 +650,13 @@ class ItemOverlay(Overlay):
             self.add_passive(count)
 
     def action(self, idx):
-        pass
+        items = getattr(gh, "gm").bag._items_data
+        item = items[idx]
+        if item["name"].lower() == "pokeball" and item["count"] > 0:
+            self.selected = True
+            item["count"] -= 1
+
+            setattr(scene_manager._current_scene, "catching", True)
 
     def close2(self):
         getattr(scene_manager._current_scene, "action_overlay").is_item = False

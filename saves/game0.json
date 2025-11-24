@@ -67,8 +67,8 @@
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 24.147163922586024,
-    "y": 30.29933044482745
+    "x": 24.419163922586023,
+    "y": 30.663833477758637
   },
   "bag": {
     "monsters": [
@@ -100,6 +100,20 @@
             "cat": "Normal Attack",
             "power": 60,
             "acc": 95
+          },
+          {
+            "name": "Spark",
+            "type": "ele",
+            "cat": "Normal Attack",
+            "power": 65,
+            "acc": 100
+          },
+          {
+            "name": "Electro Ball",
+            "type": "ele",
+            "cat": "Special Attack",
+            "power": 65,
+            "acc": 100
           }
         ]
       },
@@ -107,7 +121,7 @@
         "id": 2,
         "name": "Charizard",
         "level": 36,
-        "hp": 100,
+        "hp": 0,
         "IV": {
           "hp": 15,
           "atk": 15,
@@ -138,7 +152,7 @@
         "id": 3,
         "name": "Blastoise",
         "level": 32,
-        "hp": 100,
+        "hp": 0,
         "IV": {
           "hp": 15,
           "atk": 15,
@@ -241,7 +255,7 @@
       },
       {
         "name": "Pokeball",
-        "count": 10,
+        "count": 9,
         "sprite_path": "ingame_ui/ball.png"
       }
     ]

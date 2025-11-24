@@ -1,5 +1,4 @@
 # i2p_project/src/utils/__init__.py
-
 from .logger import Logger
 from .settings import GameSettings
 from .loader import load_tmx, load_img, load_font, load_sound
@@ -29,4 +28,3 @@ __all__ = [
     "Teleport",
     "Warp",
 ]
-

@@ -7,6 +7,7 @@ class GMhelper:
 
     def __init__(self):
         self.gm = None
+        self.up = False
 
     def save(self):
         if self.gm:
@@ -19,6 +20,7 @@ class GMhelper:
             exit(1)
         else:
             self.gm = gm
+            self.up = True
 
 
 gh = GMhelper()

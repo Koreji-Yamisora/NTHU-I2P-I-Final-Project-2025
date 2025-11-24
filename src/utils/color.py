@@ -73,7 +73,7 @@ def recolor_hue_shift(surface, new_color):
     return result
 
 
-def recolor_multiply_screen(surface, new_color):
+def recolor_multiply_screen(surface, new_color: tuple[int, int, int] | str):
     """
     Advanced method: Uses multiply for shadows, screen for highlights.
     Gives the most natural looking recolor.

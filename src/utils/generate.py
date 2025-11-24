@@ -54,6 +54,7 @@ def generate_party(max_level: int, party_size: int = 6):
                 "type": base["type"],
                 "IV": mon["IV"],
                 "EV": mon["EV"],
+                "yield": pokedex.data[id]["yield"],
                 "move": temp_move(),
             }
         )

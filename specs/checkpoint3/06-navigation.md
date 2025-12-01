@@ -1,11 +1,13 @@
 # Navigation Spec (Checkpoint 3)
 
-Score: 4 points
+Score: 2 points
+
+![Alt Text](./Checkpoint3_gif/autonav.gif)
 
 - [ ] (1 pts) Create a list of places that can be navigated
     - There must be a functional button to navigate to the selected place
     - There must be a place name
-- [ ] (3 pts) When we select the destination place from the list above, create the navigation to there
+- [ ] (1 pts) When we select the destination place from the list above, create the navigation to there
     - It can be player auto moving to the place
     - It can also be an arrow path to the place
     

@@ -13,4 +13,6 @@ No points will be given if your prequisite is not full score!
 
 Hint: Inside src/core/managers/game_manager.py there are 2 functions: save and load and it's already implemented. You can trace them and call the API when the button is clicked.
 
+Hint 2: For save and load buttons, we will test your position whether it is synchronized or not.
+
 Bonus: You can also modify save and load functions to store and retrieve additional data (Might be helpful for future features).

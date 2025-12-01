@@ -14,3 +14,5 @@ Score: 3 points
     - Starting from player turn, They have 2 different options to interact, where one of them must be attack. (other option can be run away or interact with item)
     - In player turn, they have atleast one action, which one action must be attack.
     - Each attack must reduce HP of opponent, when it reach 0, the opponent will lose (either enemy losing or user losing)
+    
+Hint: Doesn't require to be exact with our implementation, you can use your own creativity

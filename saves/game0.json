@@ -36,6 +36,43 @@
           "facing": "UP",
           "max_tiles": 2
         }
+      ],
+      "npcs": [
+        {
+          "x": 22.0,
+          "y": 29.0,
+          "classification": "stationary",
+          "facing": "DOWN",
+          "max_tiles": 2,
+          "shop": {
+            "items": [
+              {
+                "name": "Potion",
+                "count": [
+                  5,
+                  5
+                ],
+                "sprite_path": "ingame_ui/potion.png"
+              },
+              {
+                "name": "Coins",
+                "count": [
+                  3,
+                  3
+                ],
+                "sprite_path": "ingame_ui/coin.png"
+              },
+              {
+                "name": "Pokeball",
+                "count": [
+                  9,
+                  9
+                ],
+                "sprite_path": "ingame_ui/ball.png"
+              }
+            ]
+          }
+        }
       ]
     },
     {
@@ -62,7 +99,8 @@
         "x": 12.0,
         "y": 12.0
       },
-      "enemy_trainers": []
+      "enemy_trainers": [],
+      "npcs": []
     }
   ],
   "current_map": "map.tmx",

@@ -13,7 +13,6 @@ class Entity:
     game_manager: GameManager
 
     def __init__(self, x: float, y: float, game_manager: GameManager) -> None:
-        # Sprite is only for debug, need to change into animations
         self.animation = Animation(
             "character/ow1.png",
             ["down", "left", "right", "up"],
@@ -28,6 +27,18 @@ class Entity:
         self.is_moving = False
         self.is_stop = True
 
+    def change_skin(self, skin_idx: int) -> None:
+        x = skin_idx % 6 + 2
+        self.animation = Animation(
+            f"character/ow{x}.png",
+            ["down", "left", "right", "up"],
+            4,
+            (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE),
+        )
+        self.refresh_direction()
+        self.animation.update_pos(self.position)
+
+    def refresh_direction(self) -> None: ...
     def update(self, dt: float) -> None:
         self.animation.update_pos(self.position)
         self.animation.update(dt)

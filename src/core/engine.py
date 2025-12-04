@@ -23,7 +23,9 @@ class Engine:
         pg.init()
 
         self.screen = pg.display.set_mode(
-            (GameSettings.SCREEN_WIDTH, GameSettings.SCREEN_HEIGHT)
+            (GameSettings.SCREEN_WIDTH, GameSettings.SCREEN_HEIGHT),
+            pg.SCALED,
+            vsync=1,
         )
         self.clock = pg.time.Clock()
         self.running = True

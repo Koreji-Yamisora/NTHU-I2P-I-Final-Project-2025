@@ -12,7 +12,9 @@ from src.core.services import input_manager, scene_manager
 from src.utils import GameSettings, Direction, Position, PositionCamera
 
 import random
+from src.utils import Logger
 from src.utils.generate import new_iv, new_ev, generate_party
+from src.interface.overlay_shop import Shop
 
 
 class NpcClassification(Enum):
@@ -32,6 +34,7 @@ class Npc(Entity):
     warning_sign: Sprite
     detected: bool
     los_direction: Direction
+    shop_data: list | None
     level: int
 
     @override
@@ -42,10 +45,12 @@ class Npc(Entity):
         game_manager: GameManager,
         classification: NpcClassification = NpcClassification.STATIONARY,
         max_tiles: int | None = 2,
+        shop_data: list | None = None,
         facing: Direction | None = None,
         level: int = random.randint(20, 40),
     ) -> None:
         super().__init__(x, y, game_manager)
+        self.shop_data = shop_data
         self.level = level
         self.classification = classification
         self.max_tiles = max_tiles
@@ -56,6 +61,7 @@ class Npc(Entity):
                     "Idle npcTrainer requires a 'facing' Direction at instantiation"
                 )
             self._set_direction(facing)
+            self.facing = facing
         else:
             raise ValueError("Invalid classification")
         self.warning_sign = Sprite(
@@ -66,6 +72,12 @@ class Npc(Entity):
             Position(x + GameSettings.TILE_SIZE // 4, y - GameSettings.TILE_SIZE // 2)
         )
         self.detected = False
+        if self.shop_data:
+            self.shop_ov = Shop(self.shop_data)
+
+    @override
+    def refresh_direction(self):
+        self._set_direction(self.facing)
 
     @override
     def update(self, dt: float) -> None:
@@ -74,6 +86,10 @@ class Npc(Entity):
         if self.detected and input_manager.key_pressed(pygame.K_SPACE):
             self.interact()
         self.animation.update_pos(self.position)
+        if self.shop_data:
+            self.shop_ov.update(dt)
+            if not self.shop_ov.is_open:
+                self.shop_ov.timer_tick(dt)
 
     @override
     def draw(self, screen: pygame.Surface, camera: PositionCamera) -> None:
@@ -86,9 +102,12 @@ class Npc(Entity):
                 pygame.draw.rect(
                     screen, (255, 255, 0), camera.transform_rect(los_rect), 1
                 )
+        if self.shop_data:
+            self.shop_ov.draw(screen)
 
     def interact(self):
-        pass
+        Logger.info("Interacting with npc")
+        self.shop_ov.open()
 
     def _set_direction(self, direction: Direction) -> None:
         self.direction = direction
@@ -170,12 +189,14 @@ class Npc(Entity):
                 facing = facing_val
         if facing is None and classification == NpcClassification.STATIONARY:
             facing = Direction.DOWN
+        shop_data = data.get("shop")
         return cls(
             data["x"] * GameSettings.TILE_SIZE,
             data["y"] * GameSettings.TILE_SIZE,
             game_manager,
             classification,
             max_tiles,
+            shop_data,
             facing,
         )
 
@@ -185,4 +206,5 @@ class Npc(Entity):
         base["classification"] = self.classification.value
         base["facing"] = self.direction.name
         base["max_tiles"] = self.max_tiles
+        base["shop"] = self.shop_ov.shop_data
         return base

@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from src.maps.map import Map
     from src.entities.player import Player, Bush
     from src.entities.enemy_trainer import EnemyTrainer
+    from src.entities.npc import Npc
     from src.data.bag import Bag
 
 
@@ -16,6 +17,7 @@ class GameManager:
     # Entities
     player: Player | None
     enemy_trainers: dict[str, list[EnemyTrainer]]
+    npcs: dict[str, list[Npc]]
     bag: Bag
 
     # Map properties
@@ -34,6 +36,7 @@ class GameManager:
         start_map: str,
         player: Player | None,
         enemy_trainers: dict[str, list[EnemyTrainer]],
+        npcs: dict[str, list[Npc]],
         bag: Bag | None = None,
         player_spawns: dict[str, Position] | None = None,
     ):
@@ -44,6 +47,7 @@ class GameManager:
         self.current_map_key = start_map
         self.player = player
         self.enemy_trainers = enemy_trainers
+        self.npcs = npcs
         self.bag = bag if bag is not None else Bag([], [])
         self.player_spawns = player_spawns if player_spawns is not None else {}
         self.current_fight: EnemyTrainer | Bush | None = None
@@ -60,6 +64,10 @@ class GameManager:
     @property
     def current_enemy_trainers(self) -> list[EnemyTrainer]:
         return self.enemy_trainers[self.current_map_key]
+
+    @property
+    def current_npcs(self) -> list[Npc]:
+        return self.npcs[self.current_map_key]
 
     @property
     def current_teleporter(self) -> list[Teleport]:
@@ -160,7 +168,9 @@ class GameManager:
     def check_collision(self, rect: pg.Rect) -> bool:
         if self.maps[self.current_map_key].check_collision(rect):
             return True
-        for entity in self.enemy_trainers[self.current_map_key]:
+        for entity in (
+            self.enemy_trainers[self.current_map_key] + self.npcs[self.current_map_key]
+        ):
             if rect.colliderect(entity.animation.rect):
                 return True
 
@@ -197,6 +207,7 @@ class GameManager:
             block["enemy_trainers"] = [
                 t.to_dict() for t in self.enemy_trainers.get(key, [])
             ]
+            block["npcs"] = [n.to_dict() for n in self.npcs.get(key, [])]
             spawn = self.player_spawns.get(key)
             if spawn is None:
                 spawn = m.spawn
@@ -213,17 +224,19 @@ class GameManager:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, object]) -> "GameManager":
+    def from_dict(cls, data) -> "GameManager":
         from src.maps.map import Map
         from src.entities.player import Player
         from src.entities.enemy_trainer import EnemyTrainer
+        from src.entities.npc import Npc
         from src.data.bag import Bag
 
         Logger.info("Loading maps")
-        maps_data = data["map"]
+        maps_data: list[dict] = data["map"]
         maps: dict[str, Map] = {}
         player_spawns: dict[str, Position] = {}
         trainers: dict[str, list[EnemyTrainer]] = {}
+        npcs: dict[str, list[Npc]] = {}
 
         for entry in maps_data:
             path = entry["path"]
@@ -240,17 +253,26 @@ class GameManager:
             current_map,
             None,  # Player
             trainers,
+            npcs,
             bag=None,
             player_spawns=player_spawns,
         )
         gm.current_map_key = current_map
 
-        Logger.info("Loading enemy trainers")
+        Logger.info("Loading enemy trainers and npc")
+
         for m in data["map"]:
             raw_data = m["enemy_trainers"]
             gm.enemy_trainers[m["path"]] = [
                 EnemyTrainer.from_dict(t, gm) for t in raw_data
             ]
+            for i, n in enumerate(gm.enemy_trainers[m["path"]]):
+                n.change_skin(i)
+
+            raw_data = m["npcs"]
+            gm.npcs[m["path"]] = [Npc.from_dict(t, gm) for t in raw_data]
+            for i, n in enumerate(gm.npcs[m["path"]]):
+                n.change_skin(i)
 
         Logger.info("Loading Player")
         if data.get("player"):

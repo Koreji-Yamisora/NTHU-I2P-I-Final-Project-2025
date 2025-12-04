@@ -6,7 +6,7 @@ from src.utils import Position, PositionCamera, GameSettings, Logger, Direction
 from src.core import GameManager
 import math
 from typing import override
-from src.sprites import Sprite
+from src.sprites import Sprite, Animation
 from src.utils.generate import generate_party
 
 

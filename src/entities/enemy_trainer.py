@@ -56,6 +56,7 @@ class EnemyTrainer(Entity):
                     "Idle EnemyTrainer requires a 'facing' Direction at instantiation"
                 )
             self._set_direction(facing)
+            self.facing = facing
         else:
             raise ValueError("Invalid classification")
         self.warning_sign = Sprite(
@@ -67,6 +68,10 @@ class EnemyTrainer(Entity):
         )
         self.detected = False
         self.monsters = []
+
+    @override
+    def refresh_direction(self):
+        self._set_direction(self.facing)
 
     @override
     def update(self, dt: float) -> None:

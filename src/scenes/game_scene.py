@@ -59,6 +59,7 @@ class GameScene(Scene):
 
         self.setting_overlay = SettingOverlay()
         self.inventory = Inventory()
+        self.shop_on = False
         self.db = 0.0
 
     @override
@@ -74,7 +75,7 @@ class GameScene(Scene):
 
     @override
     def update(self, dt: float):
-        if self.setting_overlay.is_open or self.inventory.is_open:
+        if self.setting_overlay.is_open or self.inventory.is_open or self.shop_on:
             pass
         else:
             self.menu_button.update(dt)
@@ -92,6 +93,12 @@ class GameScene(Scene):
                     if enemy.detected:
                         gh.gm.current_fight = enemy
                     enemy.update(dt)
+
+                for npc in gh.gm.current_npcs:
+                    npc.update(dt)
+
+                self.shop_on = any(npc.shop_ov.is_open for npc in gh.gm.current_npcs)
+
                 if gh.gm.player.bush_dt:
                     gh.gm.current_fight = self.bush
                     gh.gm.player.bush_enter = False
@@ -121,8 +128,10 @@ class GameScene(Scene):
                 gh.gm.current_map.draw(screen, camera)
             for enemy in gh.gm.current_enemy_trainers:
                 enemy.draw(screen, camera)
+            for npc in gh.gm.current_npcs:
+                npc.draw(screen, camera)
 
-        if self.setting_overlay.is_open or self.inventory.is_open:
+        if self.setting_overlay.is_open or self.inventory.is_open or self.shop_on:
             pass
         else:
             self.menu_button.draw(screen)

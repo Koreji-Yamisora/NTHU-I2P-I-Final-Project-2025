@@ -25,9 +25,6 @@ class Bag:
         self.mbgs = []
         self.monsters = []
 
-    def get_monster(self, idx):
-        return self.monsters[idx]
-
     def save_battle(self, monsters: list[dict]):
         self.monsters = monsters
         for i in range(len(monsters)):
@@ -36,15 +33,24 @@ class Bag:
     def get_items(self):
         item = []
         for i in range(len(self._items_data)):
-            item.append(self.get_item(i))
+            item.append(self.idx_to_item(i))
         return item
 
-    def get_item(self, idx):
+    def idx_to_item(self, idx):
         item = {}
         item["sprite"] = self._items_data[idx]["sprite_path"]
         item["name"] = self._items_data[idx]["name"]
         item["count"] = self._items_data[idx]["count"]
         return item
+
+    def add_item(self, item):
+        if item["name"] not in [i["name"] for i in self._items_data]:
+            self._items_data.append(item)
+        else:
+            for i in range(len(self._items_data)):
+                if self._items_data[i]["name"] == item["name"]:
+                    self._items_data[i]["count"] += 1
+                    break
 
     def add_monster_col(self, col_rect: pg.Rect):
         self.monster_col_rect = col_rect

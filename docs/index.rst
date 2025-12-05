@@ -212,33 +212,8 @@ The combat system uses a **speed-based turn order**:
 Documentation Contents
 ----------------------
 
-.. toctree::
-   :maxdepth: 2
-   :caption: User Guide
-   
-   guides/installation
-   guides/gameplay
-   guides/combat_mechanics
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Developer Documentation
-   
-   architecture/overview
-   architecture/combat_system
-   architecture/scene_system
-   architecture/entity_system
-
-.. toctree::
-   :maxdepth: 1
-   :caption: API Reference
-   
-   api/scenes
-   api/entities
-   api/interface
-   api/core
-   api/data
-   api/utils
+.. note::
+   This is a single-page documentation. All content is on this page for easy navigation.
 
 Module Reference
 ----------------

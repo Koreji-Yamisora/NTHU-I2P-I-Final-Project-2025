@@ -29,9 +29,17 @@ class Player(Entity):
         >>> player.update(dt)  # Updates position based on input
         >>> player.set_path([(5, 10), (5, 11)])  # Set auto-walk path
     """
+    # Type annotations
     speed: float = 8.0 * GameSettings.TILE_SIZE
     game_manager: GameManager
     tp_cooldown: float
+    path: list[Position]
+    warning_sign: Sprite
+    sm: bool
+    lr: bool
+    bush_cd: float
+    bush_dt: bool
+    bush_enter: bool
 
     def __init__(self, x: float, y: float, game_manager: GameManager) -> None:
         super().__init__(x, y, game_manager)

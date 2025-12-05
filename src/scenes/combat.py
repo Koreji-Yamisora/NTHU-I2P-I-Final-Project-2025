@@ -40,12 +40,50 @@ class CombatScene(Scene):
         >>> scene.enter()
         >>> # Combat begins with turn-based system
     """
+    # Type annotations for class attributes
+    combat_type: str
+    catching_enabled: bool
     background: BackgroundSprite
     monster1: dict
     monster2: dict
-    bg: Sprite
+    current: int
+    enemy: int
+    
+    # UI Components
+    bg2: Sprite
+    bg3: Sprite
+    noti: Text
+    action_overlay: 'oc.ActionOverlay'
+    move_overlay: 'oc.MoveOverlay'
+    item_overlay: 'oc.ItemOverlay'
+    switch_UI: 'oc.SwitchOverlay'
+    health_overlay: 'oc.HealthOverlay'
+    
+    # Combat state
+    player_action: dict | None
+    enemy_action: dict | None
+    turn_queue: list
+    executing_turn: bool
+    turn_timer: float
+    stat_stages: dict
+    
+    # Battle flags
+    pfainted: bool
+    efainted: bool
+    catching: bool
+    done: bool
+    win: bool
+    lose: bool
+    swapping: bool
+    
+    # Misc
+    exit_cd: float
+    cd: float
+    noti_cd: float
+    ntcon: bool
+    move: int | None
 
-    def __init__(self, combat_type='wild'):
+    def __init__(self, combat_type: str = 'wild') -> None:
         super().__init__()
         self.combat_type = combat_type
         self.catching_enabled = combat_type == 'wild'

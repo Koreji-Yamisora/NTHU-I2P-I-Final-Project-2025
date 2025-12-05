@@ -48,6 +48,7 @@ class Npc(Entity):
         >>> if npc.detected:
         ...     npc.interact()  # Opens shop or dialogue
     """
+    # Type annotations
     classification: NpcClassification
     max_tiles: int | None
     _movement: IdleMovement
@@ -56,6 +57,8 @@ class Npc(Entity):
     los_direction: Direction
     shop_data: list | None
     level: int
+    facing: Direction
+    shop_ov: Shop
 
     @override
     def __init__(self, x: float, y: float, game_manager: GameManager,

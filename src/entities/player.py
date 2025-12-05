@@ -27,6 +27,10 @@ class Player(Entity):
             "exclamation.png",
             (GameSettings.TILE_SIZE // 2, GameSettings.TILE_SIZE // 2),
         )
+        self.path: list[Position] = []
+
+    def set_path(self, path: list[Position]) -> None:
+        self.path = path
 
     @override
     def update(self, dt: float) -> None:
@@ -59,12 +63,38 @@ class Player(Entity):
 
         if input_manager.key_down(pg.K_LEFT) or input_manager.key_down(pg.K_a):
             dis.x -= 1
+            self.path = []
         if input_manager.key_down(pg.K_RIGHT) or input_manager.key_down(pg.K_d):
             dis.x += 1
+            self.path = []
         if input_manager.key_down(pg.K_UP) or input_manager.key_down(pg.K_w):
             dis.y -= 1
+            self.path = []
         if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
             dis.y += 1
+            self.path = []
+
+        if not (dis.x != 0 or dis.y != 0) and self.path:
+            target_tile = self.path[0]
+            target_pos = Position(
+                target_tile.x * GameSettings.TILE_SIZE,
+                target_tile.y * GameSettings.TILE_SIZE,
+            )
+
+            diff_x = target_pos.x - self.position.x
+            diff_y = target_pos.y - self.position.y
+
+            if abs(diff_x) < 4 and abs(diff_y) < 4:
+                self.path.pop(0)
+                self.position.x = target_pos.x
+                self.position.y = target_pos.y
+            else:
+                if abs(diff_x) > abs(diff_y):
+                    dis.x = 1 if diff_x > 0 else -1
+                    self.position.y = target_pos.y
+                else:
+                    dis.y = 1 if diff_y > 0 else -1
+                    self.position.x = target_pos.x
 
         norm = math.sqrt(dis.x**2 + dis.y**2)
         if norm != 0:

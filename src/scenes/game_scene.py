@@ -64,6 +64,7 @@ class GameScene(Scene):
         self.db = 0.0
         self.mt = False
         self.old = None
+        self.tile_pos: Position | None = None
 
         self.small_map()
 
@@ -144,6 +145,123 @@ class GameScene(Scene):
             for overlay in Overlay._instances:
                 overlay.close()
             self.map_toggle()
+
+        if self.mt and input_manager.mouse_pressed(1):
+            self.tile_pos = self.get_tile_from_mouse()
+            if self.tile_pos:
+                Logger.info(f"Clicked Tile Position: {self.tile_pos}")
+                if gh.gm and gh.gm.player:
+                    start_pos = Position(
+                        int(gh.gm.player.position.x // GameSettings.TILE_SIZE),
+                        int(gh.gm.player.position.y // GameSettings.TILE_SIZE),
+                    )
+                    path = self.bfs(start_pos, self.tile_pos)
+                    if path:
+                        Logger.info(f"Path found: {len(path)} steps")
+                        gh.gm.player.set_path(path)
+                        self.map_toggle()  # Close map to start walking
+                    else:
+                        Logger.info("No path found")
+
+    def bfs(self, start: Position, end: Position) -> list[Position] | None:
+        if not gh.gm:
+            return None
+
+        queue = [(start, [])]
+        visited = {(start.x, start.y)}
+
+        map_width = gh.gm.current_map.tmxdata.width
+        map_height = gh.gm.current_map.tmxdata.height
+
+        while queue:
+            current, path = queue.pop(0)
+
+            if current.x == end.x and current.y == end.y:
+                return path
+
+            neighbors = [
+                Position(current.x, current.y - 1),
+                Position(current.x, current.y + 1),
+                Position(current.x - 1, current.y),
+                Position(current.x + 1, current.y),
+            ]
+
+            for next_pos in neighbors:
+                if (next_pos.x, next_pos.y) in visited:
+                    continue
+
+                if not (0 <= next_pos.x < map_width and 0 <= next_pos.y < map_height):
+                    continue
+
+                test_rect = pg.Rect(
+                    next_pos.x * GameSettings.TILE_SIZE,
+                    next_pos.y * GameSettings.TILE_SIZE,
+                    GameSettings.TILE_SIZE,
+                    GameSettings.TILE_SIZE,
+                )
+                end_rect = pg.Rect(
+                    end.x * GameSettings.TILE_SIZE,
+                    end.y * GameSettings.TILE_SIZE,
+                    GameSettings.TILE_SIZE,
+                    GameSettings.TILE_SIZE,
+                )
+
+                if gh.gm.current_map.check_teleport(end_rect):
+                    if gh.gm.check_collision(test_rect):
+                        continue
+
+                else:
+                    if gh.gm.check_collision(
+                        test_rect
+                    ) or gh.gm.current_map.check_teleport(test_rect):
+                        continue
+
+                visited.add((next_pos.x, next_pos.y))
+                queue.append((next_pos, path + [next_pos]))
+
+        return None
+
+    def get_tile_from_mouse(self) -> Position | None:
+        if not gh.gm or not self.mt:
+            return None
+
+        sw = crd(GameSettings.SCREEN_WIDTH)
+        sh = crd(GameSettings.SCREEN_HEIGHT)
+
+        padding = crd(self.minimap_frame.rect.width).per(3)
+        map_width = self.minimap_frame.rect.width - padding
+        map_height = self.minimap_frame.rect.height - padding
+
+        map_left = sw.per(50) - map_width // 2
+        map_top = sh.per(50) - map_height // 2
+
+        mouse_x, mouse_y = input_manager.mouse_pos
+
+        if (
+            mouse_x < map_left
+            or mouse_x > map_left + map_width
+            or mouse_y < map_top
+            or mouse_y > map_top + map_height
+        ):
+            return None
+
+        rel_x = mouse_x - map_left
+        rel_y = mouse_y - map_top
+
+        # scale_x = s.get_width() / map_w
+
+        map_w = gh.gm.current_map.tmxdata.width * GameSettings.TILE_SIZE
+        map_h = gh.gm.current_map.tmxdata.height * GameSettings.TILE_SIZE
+
+        scale_x = map_width / map_w
+        scale_y = map_height / map_h
+
+        world_x = rel_x / scale_x
+        world_y = rel_y / scale_y
+
+        tile_x = int(world_x // GameSettings.TILE_SIZE)
+        tile_y = int(world_y // GameSettings.TILE_SIZE)
+        return Position(tile_x, tile_y)
 
     def map_toggle(self):
         self.mt = not self.mt
@@ -232,6 +350,7 @@ class GameScene(Scene):
                     ts * scale_y,
                 )
                 pg.draw.rect(s, "RED", r)
+
                 b = pg.Rect(
                     (gh.gm.player.position.x - GameSettings.SCREEN_WIDTH // 2)
                     * scale_x,
@@ -241,6 +360,14 @@ class GameScene(Scene):
                     GameSettings.SCREEN_HEIGHT * scale_y,
                 )
                 pg.draw.rect(s, "AZURE", b, 2)
+                if self.tile_pos:
+                    w = pg.Rect(
+                        self.tile_pos.x * scale_x * GameSettings.TILE_SIZE,
+                        self.tile_pos.y * scale_y * GameSettings.TILE_SIZE,
+                        ts * scale_x,
+                        ts * scale_y,
+                    )
+                    pg.draw.rect(s, "GREEN", w)
             self.minimap_frame.image.blit(
                 s,
                 rect,

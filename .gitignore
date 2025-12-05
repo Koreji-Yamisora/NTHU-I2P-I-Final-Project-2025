@@ -230,8 +230,5 @@ htmlcov/
 # Documentation builds
 docs/_build/
 
-# uv project files, since not all use it
-pyproject.toml
-uv.lock
 
 log.txt

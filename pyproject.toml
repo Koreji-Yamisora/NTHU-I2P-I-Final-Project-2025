@@ -1,0 +1,18 @@
+[project]
+name = "nthu-i2p-i-final-project-2025"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pygame>=2.6.1",
+]
+
+[dependency-groups]
+dev = [
+    "astor>=0.8.1",
+    "sphinx>=9.0.4",
+    "sphinx-book-theme>=1.1.4",
+    "sphinx-rtd-theme>=0.5.1",
+    "tqdm>=4.67.1",
+]

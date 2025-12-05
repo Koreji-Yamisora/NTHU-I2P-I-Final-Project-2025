@@ -15,6 +15,7 @@ class Overlay(UIComponent):
     components: list[Text | Sprite | ColorSprite]
     backgrounds: list[Sprite | ColorSprite | BackgroundSprite]
     dark_overlay: pg.Surface
+    _instances: list[Overlay] = []
 
     def __init__(
         self,
@@ -27,6 +28,7 @@ class Overlay(UIComponent):
         self.components = []
         self.components2 = []
         self.backgrounds = []
+        Overlay._instances.append(self)
 
         if self.overlay_alpha:
             self.dark_overlay = pg.Surface(

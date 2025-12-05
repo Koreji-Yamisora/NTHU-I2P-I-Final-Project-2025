@@ -30,6 +30,7 @@ class Map:
         self.spawn = spawn
         self.teleporters = tp
         self.warps = warps if warps is not None else []
+        self.ratio = self.tmxdata.width / self.tmxdata.height
 
         pixel_w = self.tmxdata.width * GameSettings.TILE_SIZE
         pixel_h = self.tmxdata.height * GameSettings.TILE_SIZE
@@ -99,6 +100,22 @@ class Map:
 
         return None
 
+    def minimap_surface(
+        self, pixelated: int = 4, sfact=2, surface: pg.Surface | None = None
+    ) -> pg.Surface:
+        if surface is None:
+            pixel_w = self.tmxdata.width * pixelated
+            pixel_h = self.tmxdata.height * pixelated
+            minimap = pg.Surface((pixel_w, pixel_h), pg.SRCALPHA)
+
+        for layer in self.tmxdata.visible_layers:
+            if isinstance(layer, pytmx.TiledTileLayer) and (
+                "pokemonbush" not in layer.name.lower()
+            ):
+                size = self._render_tile_layer(minimap, layer, pixelated, sfact)
+
+        return minimap
+
     def _render_all_layers(self, target: pg.Surface) -> None:
         for layer in self.tmxdata.visible_layers:
             if isinstance(layer, pytmx.TiledTileLayer):
@@ -107,8 +124,15 @@ class Map:
             #     target.blit(layer.image, (layer.x or 0, layer.y or 0))
 
     def _render_tile_layer(
-        self, target: pg.Surface, layer: pytmx.TiledTileLayer
+        self,
+        target: pg.Surface,
+        layer: pytmx.TiledTileLayer,
+        pixelated: int = 0,
+        s: int = 1,
     ) -> None:
+        pixel_w = self.tmxdata.width * pixelated
+        pixel_h = self.tmxdata.height * pixelated
+        temp = pg.Surface((pixel_w, pixel_h), pg.SRCALPHA)
         for x, y, gid in layer:
             if gid == 0:
                 continue
@@ -116,10 +140,23 @@ class Map:
             if image is None:
                 continue
 
-            image = pg.transform.scale(
-                image, (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
-            )
-            target.blit(image, (x * GameSettings.TILE_SIZE, y * GameSettings.TILE_SIZE))
+            if pixelated:
+                image = pg.transform.smoothscale(image, (s, s))
+                size = target.get_size()
+                image = pg.transform.scale(image, (pixelated, pixelated))
+
+                temp.blit(image, (x * pixelated, y * pixelated))
+
+            else:
+                image = pg.transform.scale(
+                    image, (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+                )
+                target.blit(
+                    image, (x * GameSettings.TILE_SIZE, y * GameSettings.TILE_SIZE)
+                )
+        if pixelated:
+            temp = pg.transform.scale(temp, target.get_size())
+            target.blit(temp, (0, 0))
 
     def _create_collision_map(self) -> list[pg.Rect]:
         rects = []

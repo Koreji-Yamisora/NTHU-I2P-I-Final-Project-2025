@@ -10,6 +10,7 @@ from typing import override
 from src.interface.components import Button
 from src.interface import SettingOverlay, Inventory
 from src.entities.player import Bush
+from src.interface.components import Overlay
 
 from src.core.gm_helper import gh
 
@@ -61,6 +62,29 @@ class GameScene(Scene):
         self.inventory = Inventory()
         self.shop_on = False
         self.db = 0.0
+        self.mt = False
+        self.old = None
+
+        self.small_map()
+
+    def small_map(self):
+        sw = crd(GameSettings.SCREEN_WIDTH)
+        if gh.gm:
+            self.minimap_frame = Sprite(
+                "UI/raw/UI_Flat_Frame01a.png",
+                (sw // 4, (sw // 4) // gh.gm.current_map.ratio),
+            )
+        self.minimap_frame.rect.topright = (sw - 32, 32)
+
+    def large_map(self):
+        sw = crd(GameSettings.SCREEN_WIDTH)
+        sh = crd(GameSettings.SCREEN_HEIGHT)
+        if gh.gm:
+            self.minimap_frame = Sprite(
+                "UI/raw/UI_Flat_Frame01a.png",
+                (sw, sw // gh.gm.current_map.ratio),
+            )
+            self.minimap_frame.rect.center = (sw // 2, sh // 2)
 
     @override
     def enter(self) -> None:
@@ -115,6 +139,18 @@ class GameScene(Scene):
         if input_manager.key_pressed(pg.K_ESCAPE) and not self.inventory.is_open:
             input_manager.reset()
             self.setting_overlay.open()
+        if input_manager.key_pressed(pg.K_m):
+            input_manager.reset()
+            for overlay in Overlay._instances:
+                overlay.close()
+            self.map_toggle()
+
+    def map_toggle(self):
+        self.mt = not self.mt
+        if self.mt:
+            self.large_map()
+        else:
+            self.small_map()
 
     @override
     def draw(self, screen: pg.Surface):
@@ -126,6 +162,7 @@ class GameScene(Scene):
             else:
                 camera = PositionCamera(0, 0)
                 gh.gm.current_map.draw(screen, camera)
+
             for enemy in gh.gm.current_enemy_trainers:
                 enemy.draw(screen, camera)
             for npc in gh.gm.current_npcs:
@@ -141,6 +178,7 @@ class GameScene(Scene):
         if self.inventory.is_open:
             self.inventory.draw(screen)
         if gh.gm:
+            self.draw_minimap(screen)
             if self.online_manager and gh.gm.player:
                 list_online = self.online_manager.get_list_players()
                 for player in list_online:
@@ -151,3 +189,60 @@ class GameScene(Scene):
                         )
                         self.sprite_online.update_pos(pos)
                         self.sprite_online.draw(screen)
+
+    def draw_minimap(self, screen: pg.Surface):
+        if gh.gm:
+            if self.mt:
+                s = pg.transform.scale(
+                    gh.gm.current_map.minimap_surface(4, 2),
+                    (
+                        self.minimap_frame.rect.width
+                        - crd(self.minimap_frame.rect.width).per(3),
+                        self.minimap_frame.rect.height
+                        - crd(self.minimap_frame.rect.width).per(3),
+                    ),
+                )
+            else:
+                s = pg.transform.scale(
+                    gh.gm.current_map.minimap_surface(4, 1),
+                    (
+                        self.minimap_frame.rect.width
+                        - crd(self.minimap_frame.rect.width).per(8),
+                        self.minimap_frame.rect.height
+                        - crd(self.minimap_frame.rect.width).per(8),
+                    ),
+                )
+
+            rect = s.get_rect()
+            rect.center = self.minimap_frame.image.get_rect().center
+            if gh.gm.player:
+                map_w = gh.gm.current_map.tmxdata.width * GameSettings.TILE_SIZE
+                map_h = gh.gm.current_map.tmxdata.height * GameSettings.TILE_SIZE
+                scale_x = s.get_width() / map_w
+                scale_y = s.get_height() / map_h
+
+                if self.mt:
+                    ts = GameSettings.TILE_SIZE // 2
+                else:
+                    ts = GameSettings.TILE_SIZE
+                r = pg.Rect(
+                    gh.gm.player.position.x * scale_x,
+                    gh.gm.player.position.y * scale_y,
+                    ts * scale_x,
+                    ts * scale_y,
+                )
+                pg.draw.rect(s, "RED", r)
+                b = pg.Rect(
+                    (gh.gm.player.position.x - GameSettings.SCREEN_WIDTH // 2)
+                    * scale_x,
+                    (gh.gm.player.position.y - GameSettings.SCREEN_HEIGHT // 2)
+                    * scale_y,
+                    GameSettings.SCREEN_WIDTH * scale_x,
+                    GameSettings.SCREEN_HEIGHT * scale_y,
+                )
+                pg.draw.rect(s, "AZURE", b, 2)
+            self.minimap_frame.image.blit(
+                s,
+                rect,
+            )
+            self.minimap_frame.draw(screen)

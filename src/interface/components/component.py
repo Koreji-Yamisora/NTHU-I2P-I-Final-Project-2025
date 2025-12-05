@@ -3,11 +3,16 @@ from typing import Protocol
 
 
 class UIComponent(Protocol):
-    def update(self, dt: float) -> None: ...
+    """U I Component."""
 
-    def draw(self, screen: pg.Surface) -> None: ...
+    def update(self, dt: float) ->None:
+        """Update."""
+        ...
+
+    def draw(self, screen: pg.Surface) ->None:
+        """Draw."""
+        ...
 
 
 MonsterInfoType = UIComponent
 ItemInfoType = UIComponent
-

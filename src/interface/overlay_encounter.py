@@ -251,10 +251,10 @@ class SwitchOverlay(Overlay):
         self.selected = False
         self.next = None
 
-    def init(self):
+    def init(self, forced=False):
         self.clear()
         self.selected = False
-        self.forced = False
+        self.forced = forced
         bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(80)))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
         b = bg.rect.copy()
@@ -404,6 +404,7 @@ class ActionOverlay(Overlay):
         self.is_item = False
         self.is_move = False
         self.is_switch = False
+        self.is_run = False
         self.first = True
         self.try_run = False
         bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(15)))
@@ -468,21 +469,13 @@ class ActionOverlay(Overlay):
     def action(self, key):
         match key:
             case 0:
-                self.run()
+                self.is_run = True
             case 1:
                 self.is_switch = True
             case 2:
                 self.is_move = True
             case 3:
                 self.is_item = True
-
-    def run(self):
-        if 95 > random.randint(0, 100):
-            scene_manager.change_scene("game")
-        else:
-            if hasattr(scene_manager._current_scene, "noti"):
-                setattr(scene_manager._current_scene, "player_turn", False)
-                scene_manager._current_scene.notichange("You fail to run away.")
 
 
 class MoveOverlay(Overlay):
@@ -570,10 +563,11 @@ class MoveOverlay(Overlay):
         self.labels.append(label)
 
     def action(self, key):
-        self.selected = True
-        if hasattr(scene_manager._current_scene, "move"):
-            setattr(scene_manager._current_scene, "move", key)
-            Logger.debug(f"Move {key} selected")
+        if key < len(self.moves):
+            self.selected = True
+            if hasattr(scene_manager._current_scene, "move"):
+                setattr(scene_manager._current_scene, "move", key)
+                Logger.debug(f"MoveOverlay: Move {key} selected. self.selected set to True.")
 
     def inmove(self, moves: list[dict]):
         self.moves = moves
@@ -592,6 +586,7 @@ class ItemOverlay(Overlay):
     def __init__(self):
         super().__init__()
         self.selected = False
+        self.selected_item = None  # Store the selected item
 
     def init(self):
         bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(80)))
@@ -652,10 +647,20 @@ class ItemOverlay(Overlay):
     def action(self, idx):
         items = getattr(gh, "gm").bag._items_data
         item = items[idx]
-        if item["name"].lower() == "pokeball" and item["count"] > 0:
-            self.selected = True
-            item["count"] -= 1
-
+        
+        # Check if item is available
+        if item["count"] <= 0:
+            return
+        
+        # Store the selected item
+        self.selected_item = item
+        self.selected = True
+        
+        # Decrease count
+        item["count"] -= 1
+        
+        # Set catching flag if pokeball
+        if item["name"].lower() == "pokeball":
             setattr(scene_manager._current_scene, "catching", True)
 
     def close2(self):

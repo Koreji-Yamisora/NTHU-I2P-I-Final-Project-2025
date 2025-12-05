@@ -4,7 +4,6 @@ import json
 import os
 import pygame as pg
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from src.maps.map import Map
     from src.entities.player import Player, Bush
@@ -14,35 +13,23 @@ if TYPE_CHECKING:
 
 
 class GameManager:
-    # Entities
+    """Game  management system."""
     player: Player | None
     enemy_trainers: dict[str, list[EnemyTrainer]]
     npcs: dict[str, list[Npc]]
     bag: Bag
-
-    # Map properties
     current_map_key: str
     maps: dict[str, Map]
     player_spawns: dict[str, Position]
-
-    # Changing Scene properties
     should_change_scene: bool
     next_map: str
     previous_map: str
 
-    def __init__(
-        self,
-        maps: dict[str, Map],
-        start_map: str,
-        player: Player | None,
-        enemy_trainers: dict[str, list[EnemyTrainer]],
-        npcs: dict[str, list[Npc]],
-        bag: Bag | None = None,
-        player_spawns: dict[str, Position] | None = None,
-    ):
+    def __init__(self, maps: dict[str, Map], start_map: str, player: (
+        Player | None), enemy_trainers: dict[str, list[EnemyTrainer]], npcs:
+        dict[str, list[Npc]], bag: (Bag | None)=None, player_spawns: (dict[
+        str, Position] | None)=None):
         from src.data.bag import Bag
-
-        # Game Properties
         self.maps = maps
         self.current_map_key = start_map
         self.player = player
@@ -51,46 +38,46 @@ class GameManager:
         self.bag = bag if bag is not None else Bag([], [])
         self.player_spawns = player_spawns if player_spawns is not None else {}
         self.current_fight: EnemyTrainer | Bush | None = None
-
-        # Check If you should change scene
         self.should_change_scene = False
-        self.next_map = ""
-        self.previous_map = ""
+        self.next_map = ''
+        self.previous_map = ''
 
     @property
-    def current_map(self) -> Map:
+    def current_map(self) ->Map:
+        """Current Map."""
         return self.maps[self.current_map_key]
 
     @property
-    def current_enemy_trainers(self) -> list[EnemyTrainer]:
+    def current_enemy_trainers(self) ->list[EnemyTrainer]:
+        """Current Enemy Trainers."""
         return self.enemy_trainers[self.current_map_key]
 
     @property
-    def current_npcs(self) -> list[Npc]:
+    def current_npcs(self) ->list[Npc]:
+        """Current Npcs."""
         return self.npcs[self.current_map_key]
 
     @property
-    def current_teleporter(self) -> list[Teleport]:
+    def current_teleporter(self) ->list[Teleport]:
+        """Current Teleporter."""
         return self.maps[self.current_map_key].teleporters
 
-    def switch_map(self, target: str) -> None:
+    def switch_map(self, target: str) ->None:
+        """Switch Map."""
         if target not in self.maps:
             Logger.warning(f"Map '{target}' not loaded; cannot switch.")
             return
-
-        # Store where we're coming from before switching
         self.previous_map = self.current_map_key
         self.next_map = target
         self.should_change_scene = True
 
-    def warp(self, warp: Warp) -> None:
+    def warp(self, warp: Warp) ->None:
+        """Warp."""
         if not self.player:
             return
-
         destination_pos = warp.destination.copy()
         offset_x = 0
         offset_y = 0
-
         if self.player.direction == Direction.DOWN:
             offset_y = GameSettings.TILE_SIZE
         elif self.player.direction == Direction.UP:
@@ -99,44 +86,32 @@ class GameManager:
             offset_x = GameSettings.TILE_SIZE
         elif self.player.direction == Direction.LEFT:
             offset_x = -GameSettings.TILE_SIZE
-
-        offset_pos = Position(
-            destination_pos.x + offset_x, destination_pos.y + offset_y
-        )
-
-        test_rect = pg.Rect(
-            offset_pos.x,
-            offset_pos.y,
-            GameSettings.TILE_SIZE,
-            GameSettings.TILE_SIZE,
-        )
-
+        offset_pos = Position(destination_pos.x + offset_x, destination_pos
+            .y + offset_y)
+        test_rect = pg.Rect(offset_pos.x, offset_pos.y, GameSettings.
+            TILE_SIZE, GameSettings.TILE_SIZE)
         if not self.check_collision(test_rect):
             self.player.position = offset_pos
         else:
             self.player.position = destination_pos.copy()
-
         self.player.animation.update_pos(self.player.position)
 
-    def try_switch_map(self) -> None:
+    def try_switch_map(self) ->None:
+        """Try Switch Map."""
         if self.should_change_scene:
             self.current_map_key = self.next_map
-            self.next_map = ""
+            self.next_map = ''
             self.should_change_scene = False
             if self.player:
                 destination_map = self.maps[self.current_map_key]
-
                 tpx = None
-
                 for teleporter in destination_map.teleporters:
                     if teleporter.destination == self.previous_map:
                         tpx = teleporter
                         break
-
                 if tpx and tpx.pos:
                     offset_x = 0
                     offset_y = 0
-
                     if self.player.direction == Direction.DOWN:
                         offset_y = GameSettings.TILE_SIZE
                     elif self.player.direction == Direction.UP:
@@ -145,15 +120,10 @@ class GameManager:
                         offset_x = GameSettings.TILE_SIZE
                     elif self.player.direction == Direction.LEFT:
                         offset_x = -GameSettings.TILE_SIZE
-                    offset_pos = Position(tpx.pos.x + offset_x, tpx.pos.y + offset_y)
-
-                    test_rect = pg.Rect(
-                        offset_pos.x,
-                        offset_pos.y,
-                        GameSettings.TILE_SIZE,
-                        GameSettings.TILE_SIZE,
-                    )
-
+                    offset_pos = Position(tpx.pos.x + offset_x, tpx.pos.y +
+                        offset_y)
+                    test_rect = pg.Rect(offset_pos.x, offset_pos.y,
+                        GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
                     if not self.check_collision(test_rect):
                         self.player.position = offset_pos
                     else:
@@ -165,122 +135,101 @@ class GameManager:
                     self.player.position = spawn_pos
                 self.player.animation.update_pos(self.player.position)
 
-    def check_collision(self, rect: pg.Rect) -> bool:
+    def check_collision(self, rect: pg.Rect) ->bool:
+        """Check Collision."""
         if self.maps[self.current_map_key].check_collision(rect):
             return True
-        for entity in (
-            self.enemy_trainers[self.current_map_key] + self.npcs[self.current_map_key]
-        ):
+        for entity in (self.enemy_trainers[self.current_map_key] + self.
+            npcs[self.current_map_key]):
             if rect.colliderect(entity.animation.rect):
                 return True
-
         return False
 
-    def check_bush(self, rect: pg.Rect) -> bool:
+    def check_bush(self, rect: pg.Rect) ->bool:
+        """Check Bush."""
         if self.maps[self.current_map_key].check_bush(rect):
             return True
         return False
 
-    def save(self, path: str) -> None:
+    def save(self, path: str) ->None:
+        """Save."""
         try:
-            with open(path, "w") as f:
+            with open(path, 'w') as f:
                 json.dump(self.to_dict(), f, indent=2)
-            Logger.info(f"Game saved to {path}")
+            Logger.info(f'Game saved to {path}')
         except Exception as e:
-            Logger.warning(f"Failed to save game: {e}")
+            Logger.warning(f'Failed to save game: {e}')
 
     @classmethod
-    def load(cls, path: str) -> "GameManager | None":
+    def load(cls, path: str) ->'GameManager | None':
+        """Load."""
         if not os.path.exists(path):
-            Logger.error(f"No file found: {path}, ignoring load function")
+            Logger.error(f'No file found: {path}, ignoring load function')
             return None
-
-        with open(path, "r") as f:
-            Logger.info(f"Loading game from {path}")
+        with open(path, 'r') as f:
+            Logger.info(f'Loading game from {path}')
             data = json.load(f)
         return cls.from_dict(data)
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) ->dict[str, object]:
+        """To Dict."""
         map_blocks: list[dict[str, object]] = []
         for key, m in self.maps.items():
             block = m.to_dict()
-            block["enemy_trainers"] = [
-                t.to_dict() for t in self.enemy_trainers.get(key, [])
-            ]
-            block["npcs"] = [n.to_dict() for n in self.npcs.get(key, [])]
+            block['enemy_trainers'] = [t.to_dict() for t in self.
+                enemy_trainers.get(key, [])]
+            block['npcs'] = [n.to_dict() for n in self.npcs.get(key, [])]
             spawn = self.player_spawns.get(key)
             if spawn is None:
                 spawn = m.spawn
-            block["player"] = {
-                "x": spawn.x / GameSettings.TILE_SIZE,
-                "y": spawn.y / GameSettings.TILE_SIZE,
-            }
+            block['player'] = {'x': spawn.x / GameSettings.TILE_SIZE, 'y': 
+                spawn.y / GameSettings.TILE_SIZE}
             map_blocks.append(block)
-        return {
-            "map": map_blocks,
-            "current_map": self.current_map_key,
-            "player": self.player.to_dict() if self.player is not None else None,
-            "bag": self.bag.to_dict(),
-        }
+        return {'map': map_blocks, 'current_map': self.current_map_key,
+            'player': self.player.to_dict() if self.player is not None else
+            None, 'bag': self.bag.to_dict()}
 
     @classmethod
-    def from_dict(cls, data) -> "GameManager":
+    def from_dict(cls, data) ->'GameManager':
+        """From Dict."""
         from src.maps.map import Map
         from src.entities.player import Player
         from src.entities.enemy_trainer import EnemyTrainer
         from src.entities.npc import Npc
         from src.data.bag import Bag
-
-        Logger.info("Loading maps")
-        maps_data: list[dict] = data["map"]
+        Logger.info('Loading maps')
+        maps_data: list[dict] = data['map']
         maps: dict[str, Map] = {}
         player_spawns: dict[str, Position] = {}
         trainers: dict[str, list[EnemyTrainer]] = {}
         npcs: dict[str, list[Npc]] = {}
-
         for entry in maps_data:
-            path = entry["path"]
+            path = entry['path']
             maps[path] = Map.from_dict(entry)
-            sp = entry.get("player")
+            sp = entry.get('player')
             if sp:
-                player_spawns[path] = Position(
-                    sp["x"] * GameSettings.TILE_SIZE, sp["y"] * GameSettings.TILE_SIZE
-                )
-
-        current_map = data["current_map"]
-        gm = cls(
-            maps,
-            current_map,
-            None,  # Player
-            trainers,
-            npcs,
-            bag=None,
-            player_spawns=player_spawns,
-        )
+                player_spawns[path] = Position(sp['x'] * GameSettings.
+                    TILE_SIZE, sp['y'] * GameSettings.TILE_SIZE)
+        current_map = data['current_map']
+        gm = cls(maps, current_map, None, trainers, npcs, bag=None,
+            player_spawns=player_spawns)
         gm.current_map_key = current_map
-
-        Logger.info("Loading enemy trainers and npc")
-
-        for m in data["map"]:
-            raw_data = m["enemy_trainers"]
-            gm.enemy_trainers[m["path"]] = [
-                EnemyTrainer.from_dict(t, gm) for t in raw_data
-            ]
-            for i, n in enumerate(gm.enemy_trainers[m["path"]]):
+        Logger.info('Loading enemy trainers and npc')
+        for m in data['map']:
+            raw_data = m['enemy_trainers']
+            gm.enemy_trainers[m['path']] = [EnemyTrainer.from_dict(t, gm) for
+                t in raw_data]
+            for i, n in enumerate(gm.enemy_trainers[m['path']]):
                 n.change_skin(i)
-
-            raw_data = m["npcs"]
-            gm.npcs[m["path"]] = [Npc.from_dict(t, gm) for t in raw_data]
-            for i, n in enumerate(gm.npcs[m["path"]]):
+            raw_data = m['npcs']
+            gm.npcs[m['path']] = [Npc.from_dict(t, gm) for t in raw_data]
+            for i, n in enumerate(gm.npcs[m['path']]):
                 n.change_skin(i)
-
-        Logger.info("Loading Player")
-        if data.get("player"):
-            gm.player = Player.from_dict(data["player"], gm)
-
-        Logger.info("Loading bag")
+        Logger.info('Loading Player')
+        if data.get('player'):
+            gm.player = Player.from_dict(data['player'], gm)
+        Logger.info('Loading bag')
         from src.data.bag import Bag as _Bag
-
-        gm.bag = Bag.from_dict(data.get("bag", {})) if data.get("bag") else _Bag([], [])
-
+        gm.bag = Bag.from_dict(data.get('bag', {})) if data.get('bag'
+            ) else _Bag([], [])
         return gm

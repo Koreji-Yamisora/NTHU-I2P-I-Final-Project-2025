@@ -3,27 +3,28 @@ from src.utils import Logger, MouseBtn, Key
 
 
 class InputManager:
-    def __init__(self) -> None:
-        # Keyboard
+    """Input  management system."""
+
+    def __init__(self) ->None:
         self._down_keys: set[Key] = set()
         self._pressed_keys: set[Key] = set()
         self._released_keys: set[Key] = set()
-
-        # Mouse
         self._down_mouse: set[MouseBtn] = set()
         self._pressed_mouse: set[MouseBtn] = set()
         self._released_mouse: set[MouseBtn] = set()
         self.mouse_pos: tuple[int, int] = (0, 0)
-        self.mouse_wheel: int = 0  # +1 / -1
+        self.mouse_wheel: int = 0
 
-    def reset(self) -> None:
+    def reset(self) ->None:
+        """Reset."""
         self._pressed_keys.clear()
         self._released_keys.clear()
         self._pressed_mouse.clear()
         self._released_mouse.clear()
         self.mouse_wheel = 0
-        
-    def handle_events(self, e: pg.event.Event) -> None:
+
+    def handle_events(self, e: pg.event.Event) ->None:
+        """Handle Events."""
         if e.type == pg.MOUSEMOTION:
             self.mouse_pos = e.pos
         elif e.type == pg.MOUSEBUTTONDOWN:
@@ -37,28 +38,32 @@ class InputManager:
                 self._down_mouse.discard(e.button)
                 self._released_mouse.add(e.button)
         elif e.type == pg.KEYDOWN:
-            # Logger.debug(f"Key {e.key} pressed")
             self._down_keys.add(e.key)
             self._pressed_keys.add(e.key)
         elif e.type == pg.KEYUP:
-            # Logger.debug(f"Key {e.key} released")
             self._down_keys.discard(e.key)
             self._released_keys.add(e.key)
 
-    def key_down(self, k: Key) -> bool:
+    def key_down(self, k: Key) ->bool:
+        """Key Down."""
         return k in self._down_keys
-        
-    def key_pressed(self, k: Key) -> bool:  
+
+    def key_pressed(self, k: Key) ->bool:
+        """Key Pressed."""
         return k in self._pressed_keys
-        
-    def key_released(self, k: Key) -> bool:  
+
+    def key_released(self, k: Key) ->bool:
+        """Key Released."""
         return k in self._released_keys
-        
-    def mouse_down(self, b: MouseBtn) -> bool:     
+
+    def mouse_down(self, b: MouseBtn) ->bool:
+        """Mouse Down."""
         return b in self._down_mouse
-        
-    def mouse_pressed(self, b: MouseBtn) -> bool:     
+
+    def mouse_pressed(self, b: MouseBtn) ->bool:
+        """Mouse Pressed."""
         return b in self._pressed_mouse
-        
-    def mouse_released(self, b: MouseBtn) -> bool:     
+
+    def mouse_released(self, b: MouseBtn) ->bool:
+        """Mouse Released."""
         return b in self._released_mouse

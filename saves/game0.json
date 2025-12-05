@@ -52,7 +52,8 @@
                   5,
                   5
                 ],
-                "sprite_path": "ingame_ui/potion.png"
+                "sprite_path": "ingame_ui/potion.png",
+                "healing": 20
               },
               {
                 "name": "Coins",
@@ -69,6 +70,56 @@
                   9
                 ],
                 "sprite_path": "ingame_ui/ball.png"
+              },
+              {
+                "name": "X Attack",
+                "count": [
+                  3,
+                  3
+                ],
+                "sprite_path": "ingame_ui/potion.png",
+                "stat_boost": "atk",
+                "boost_amount": 2
+              },
+              {
+                "name": "X Defense",
+                "count": [
+                  3,
+                  3
+                ],
+                "sprite_path": "ingame_ui/potion.png",
+                "stat_boost": "def",
+                "boost_amount": 2
+              },
+              {
+                "name": "X Sp. Atk",
+                "count": [
+                  3,
+                  3
+                ],
+                "sprite_path": "ingame_ui/potion.png",
+                "stat_boost": "spa",
+                "boost_amount": 2
+              },
+              {
+                "name": "X Sp. Def",
+                "count": [
+                  3,
+                  3
+                ],
+                "sprite_path": "ingame_ui/potion.png",
+                "stat_boost": "spd",
+                "boost_amount": 2
+              },
+              {
+                "name": "X Speed",
+                "count": [
+                  3,
+                  3
+                ],
+                "sprite_path": "ingame_ui/potion.png",
+                "stat_boost": "spe",
+                "boost_amount": 2
               }
             ]
           }
@@ -284,7 +335,8 @@
       {
         "name": "Potion",
         "count": 5,
-        "sprite_path": "ingame_ui/potion.png"
+        "sprite_path": "ingame_ui/potion.png",
+        "healing": 20
       },
       {
         "name": "Coins",
@@ -295,6 +347,41 @@
         "name": "Pokeball",
         "count": 9,
         "sprite_path": "ingame_ui/ball.png"
+      },
+      {
+        "name": "X Attack",
+        "count": 2,
+        "sprite_path": "ingame_ui/potion.png",
+        "stat_boost": "atk",
+        "boost_amount": 2
+      },
+      {
+        "name": "X Defense",
+        "count": 2,
+        "sprite_path": "ingame_ui/potion.png",
+        "stat_boost": "def",
+        "boost_amount": 2
+      },
+      {
+        "name": "X Sp. Atk",
+        "count": 2,
+        "sprite_path": "ingame_ui/potion.png",
+        "stat_boost": "spa",
+        "boost_amount": 2
+      },
+      {
+        "name": "X Sp. Def",
+        "count": 2,
+        "sprite_path": "ingame_ui/potion.png",
+        "stat_boost": "spd",
+        "boost_amount": 2
+      },
+      {
+        "name": "X Speed",
+        "count": 2,
+        "sprite_path": "ingame_ui/potion.png",
+        "stat_boost": "spe",
+        "boost_amount": 2
       }
     ]
   }

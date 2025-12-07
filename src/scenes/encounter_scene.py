@@ -3,12 +3,13 @@ from src.core import gh
 from src.utils import Logger
 from typing import override
 
+
 class EncounterScene(CombatScene):
     """Wild Pokemon encounter scene"""
-    
+
     def __init__(self):
         super().__init__(combat_type="wild")
-    
+
     @override
     def load_data(self):
         """Load wild encounter data"""
@@ -19,7 +20,7 @@ class EncounterScene(CombatScene):
         else:
             self._init()
 
-            self.current = 4  # Wild encounters use index 4
+            self.current = 0  # Wild encounters use index 4
             self.enemy = 0
             self.action_overlay.is_active = True
             self.action_overlay.is_passive = True
@@ -39,6 +40,7 @@ class EncounterScene(CombatScene):
             self.health_overlay.load()
             from src.utils import crd, GameSettings
             from src.sprites import Text
+
             sh = crd(GameSettings.SCREEN_HEIGHT)
             self.noti = Text(f"What will {self.monster1['name']} do?", 32, "Black")
             self.noti.rect.topleft = (
@@ -56,3 +58,8 @@ class EncounterScene(CombatScene):
             self.turn_queue = []
             self.executing_turn = False
             self.turn_timer = 0.0
+            # Stat stages for both Pokemon (range: -6 to +6)
+            self.stat_stages = {
+                "player": {"atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0},
+                "enemy": {"atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0},
+            }

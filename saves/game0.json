@@ -165,6 +165,7 @@
         "id": 1,
         "name": "Pikachu",
         "level": 25,
+        "exp": 0,
         "hp": 35,
         "IV": {
           "hp": 15,
@@ -210,6 +211,7 @@
         "id": 2,
         "name": "Charizard",
         "level": 36,
+        "exp": 0,
         "hp": 0,
         "IV": {
           "hp": 15,
@@ -241,6 +243,7 @@
         "id": 3,
         "name": "Blastoise",
         "level": 32,
+        "exp": 0,
         "hp": 0,
         "IV": {
           "hp": 15,
@@ -272,6 +275,7 @@
         "id": 4,
         "name": "Venusaur",
         "level": 30,
+        "exp": 0,
         "hp": 100,
         "IV": {
           "hp": 15,
@@ -303,6 +307,7 @@
         "id": 5,
         "name": "Dragonite",
         "level": 40,
+        "exp": 0,
         "hp": 100,
         "IV": {
           "hp": 15,

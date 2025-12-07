@@ -7,6 +7,7 @@ from typing import Dict, Optional
 TIMEOUT_TIME = 60.0
 CHECK_INTERVAL_TIME = 10.0
 
+
 @dataclass
 class Player:
     id: int
@@ -31,24 +32,28 @@ class PlayerHandler:
     _lock: threading.Lock
     _stop_event: threading.Event
     _thread: threading.Thread | None
-    
+
     players: Dict[int, Player]
     _next_id: int
 
-    def __init__(self, *, timeout_seconds: float = 120.0, check_interval_seconds: float = 5.0):
+    def __init__(
+        self, *, timeout_seconds: float = 120.0, check_interval_seconds: float = 5.0
+    ):
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread = None
-        
+
         self.players = {}
         self._next_id = 0
-        
+
     # Threading
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
         self._stop_event.clear()
-        self._thread = threading.Thread(target=self._cleaner, name="PlayerCleaner", daemon=True)
+        self._thread = threading.Thread(
+            target=self._cleaner, name="PlayerCleaner", daemon=True
+        )
         self._thread.start()
 
     def stop(self) -> None:
@@ -66,7 +71,7 @@ class PlayerHandler:
                         to_remove.append(pid)
                 for pid in to_remove:
                     _ = self.players.pop(pid, None)
-                    
+
     # API
     def register(self) -> int:
         with self._lock:
@@ -88,10 +93,5 @@ class PlayerHandler:
         with self._lock:
             player_list = {}
             for p in self.players.values():
-                player_list[p.id] = {
-                    "id": p.id,
-                    "x": p.x,
-                    "y": p.y,
-                    "map": p.map
-                }
+                player_list[p.id] = {"id": p.id, "x": p.x, "y": p.y, "map": p.map}
             return player_list

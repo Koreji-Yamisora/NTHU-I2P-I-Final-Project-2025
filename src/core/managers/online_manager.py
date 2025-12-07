@@ -2,11 +2,13 @@ import requests
 import threading
 import time
 from src.utils import Logger, GameSettings
+
 POLL_INTERVAL = 0.02
 
 
 class OnlineManager:
     """Online  management system."""
+
     list_players: list[dict]
     player_id: int
     _stop_event: threading.Event
@@ -20,7 +22,7 @@ class OnlineManager:
         self._thread = None
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
-        Logger.info('OnlineManager initialized')
+        Logger.info("OnlineManager initialized")
 
     def enter(self):
         """Enter."""
@@ -31,7 +33,7 @@ class OnlineManager:
         """Exit."""
         self.stop()
 
-    def get_list_players(self) ->list[dict]:
+    def get_list_players(self) -> list[dict]:
         """Get list players."""
         with self._lock:
             return list(self.list_players)
@@ -39,68 +41,68 @@ class OnlineManager:
     def register(self):
         """Register."""
         try:
-            url = f'{self.base}/register'
+            url = f"{self.base}/register"
             resp = requests.get(url, timeout=5)
             resp.raise_for_status()
             data = resp.json()
             if resp.status_code == 200:
-                self.player_id = data['id']
-                Logger.info(
-                    f'OnlineManager registered with id={self.player_id}')
+                self.player_id = data["id"]
+                Logger.info(f"OnlineManager registered with id={self.player_id}")
             else:
-                Logger.error('Registration failed:', data)
+                Logger.error("Registration failed:", data)
         except Exception as e:
-            Logger.warning(f'OnlineManager registration error: {e}')
+            Logger.warning(f"OnlineManager registration error: {e}")
         return
 
-    def update(self, x: float, y: float, map_name: str) ->bool:
+    def update(self, x: float, y: float, map_name: str) -> bool:
         """Update."""
         if self.player_id == -1:
             return False
-        url = f'{self.base}/players'
-        body = {'id': self.player_id, 'x': x, 'y': y, 'map': map_name}
+        url = f"{self.base}/players"
+        body = {"id": self.player_id, "x": x, "y": y, "map": map_name}
         try:
             resp = requests.post(url, json=body, timeout=5)
             if resp.status_code == 200:
                 return True
-            Logger.warning(f'Update failed: {resp.status_code} {resp.text}')
+            Logger.warning(f"Update failed: {resp.status_code} {resp.text}")
         except Exception as e:
             if self._on_error:
                 try:
                     self._on_error(e)
                 except Exception:
                     pass
-            Logger.warning(f'Online update error: {e}')
+            Logger.warning(f"Online update error: {e}")
         return False
 
-    def start(self) ->None:
+    def start(self) -> None:
         """Start."""
         if self._thread and self._thread.is_alive():
             return
         self._stop_event.clear()
-        self._thread = threading.Thread(target=self._loop, name=
-            'OnlineManagerPoller', daemon=True)
+        self._thread = threading.Thread(
+            target=self._loop, name="OnlineManagerPoller", daemon=True
+        )
         self._thread.start()
 
-    def stop(self) ->None:
+    def stop(self) -> None:
         """Stop."""
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2)
 
-    def _loop(self) ->None:
+    def _loop(self) -> None:
         while not self._stop_event.wait(POLL_INTERVAL):
             self._fetch_players()
 
-    def _fetch_players(self) ->None:
+    def _fetch_players(self) -> None:
         try:
-            url = f'{self.base}/players'
+            url = f"{self.base}/players"
             resp = requests.get(url, timeout=5)
             resp.raise_for_status()
-            all_players = resp.json().get('players', [])
+            all_players = resp.json().get("players", [])
             pid = self.player_id
             filtered = [p for key, p in all_players.items() if int(key) != pid]
             with self._lock:
                 self.list_players = filtered
         except Exception as e:
-            Logger.warning(f'OnlineManager fetch error: {e}')
+            Logger.warning(f"OnlineManager fetch error: {e}")

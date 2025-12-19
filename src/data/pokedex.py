@@ -1,80 +1,42 @@
 class PokeDex:
-    data = {
-        1: {
-            "sprite_path": "menu_sprites/menusprite1.png",
-            "fight_path": "sprites/sprite1.png",
-            "name": "Pikachu",
-            "hp": 35,
-            "atk": 55,
-            "def": 40,
-            "spa": 50,
-            "spd": 50,
-            "spe": 90,
-            "type": ("ele", None),
-            "abi": ("Static", None),
-            "yield": {"spe": 2},
-        },
-        2: {
-            "sprite_path": "menu_sprites/menusprite2.png",
-            "fight_path": "sprites/sprite2.png",
-            "name": "Charizard",
-            "hp": 78,
-            "atk": 84,
-            "def": 78,
-            "spa": 109,
-            "spd": 85,
-            "spe": 100,
-            "type": ("fir", "fly"),
-            "abi": ("Blaze", None),
-            "yield": {"spa": 3},
-        },
-        3: {
-            "sprite_path": "menu_sprites/menusprite3.png",
-            "fight_path": "sprites/sprite3.png",
-            "name": "Blastoise",
-            "hp": 79,
-            "atk": 83,
-            "def": 100,
-            "spa": 85,
-            "spd": 105,
-            "spe": 78,
-            "type": ("fir", "fly"),
-            "abi": ("Torrent", None),
-            "yield": {"spd": 3},
-        },
-        4: {
-            "sprite_path": "menu_sprites/menusprite4.png",
-            "fight_path": "sprites/sprite4.png",
-            "name": "Venusaur",
-            "hp": 80,
-            "atk": 82,
-            "def": 83,
-            "spa": 100,
-            "spd": 100,
-            "spe": 80,
-            "type": ("gra", "poi"),
-            "abi": ("Overgrow", None),
-            "yield": {"spa": 2, "spd": 1},
-        },
-        5: {
-            "sprite_path": "menu_sprites/menusprite5.png",
-            "fight_path": "sprites/sprite5.png",
-            "name": "Dragonite",
-            "hp": 91,
-            "atk": 134,
-            "def": 95,
-            "spa": 100,
-            "spd": 100,
-            "spe": 80,
-            "type": ("dra", "fly"),
-            "abi": ("Overgrow", None),
-            "yield": {"atk": 3},
-        },
-    }
+    # Evolution format: "evolution": {"level": <level>, "to": <target_id>}
+    data = {}
+
+    @staticmethod
+    def load_data():
+        import json
+        import os
+
+        file_path = os.path.join(os.path.dirname(__file__), "pokedex.json")
+        try:
+            with open(file_path, "r") as f:
+                raw_data = json.load(f)
+                # Convert keys to integers
+                PokeDex.data = {int(k): v for k, v in raw_data.items()}
+        except FileNotFoundError:
+            print(f"Error: {file_path} not found.")
+            PokeDex.data = {}
 
 
-class LevelTable:
-    pass
+class PokeItems:
+    items = {}
+    moves = {}
+
+    @staticmethod
+    def load_data():
+        import json
+        import os
+
+        file_path = os.path.join(os.path.dirname(__file__), "pokeitems.json")
+        try:
+            with open(file_path, "r") as f:
+                raw_data = json.load(f)
+                PokeItems.items = raw_data.get("items", {})
+                PokeItems.moves = raw_data.get("moves", {})
+        except FileNotFoundError:
+            print(f"Error: {file_path} not found.")
+            PokeItems.moves = {}
+            PokeItems.moves = {}
 
 
 class PokeType:
@@ -102,7 +64,7 @@ class PokeType:
         self.matrix = {
             "nor": (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 0, 1, 1, 3, 1),
             "fir": (0, 3, 3, 2, 1, 2, 1, 1, 1, 1, 1, 2, 3, 1, 3, 1, 2, 1),
-            "wat": (1, 2, 3, 3, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 3, 1, 1, 1),
+            "wat": (1, 3, 3, 3, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 3, 1, 1, 1),
             "gra": (1, 3, 2, 3, 1, 1, 1, 3, 2, 3, 1, 3, 2, 1, 3, 1, 3, 1),
             "ele": (1, 1, 2, 3, 3, 1, 1, 1, 0, 2, 1, 1, 1, 1, 3, 1, 1, 1),
             "ice": (1, 3, 3, 2, 1, 3, 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 3, 1),
@@ -165,3 +127,9 @@ class PokeType:
         else:
             result = check(e1)
         return result
+
+PokeItems.load_data()
+
+
+# Initialize data on import
+PokeDex.load_data()

@@ -9,7 +9,6 @@
           "destination": "gym.tmx"
         }
       ],
-      "warps": [],
       "player": {
         "x": 16.0,
         "y": 30.0
@@ -51,80 +50,278 @@
                 "count": [
                   5,
                   5
-                ],
-                "sprite_path": "ingame_ui/potion.png",
-                "healing": 20
+                ]
               },
               {
-                "name": "Coins",
+                "name": "Super Potion",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Hyper Potion",
                 "count": [
                   3,
                   3
-                ],
-                "sprite_path": "ingame_ui/coin.png"
+                ]
+              },
+              {
+                "name": "Revive",
+                "count": [
+                  3,
+                  3
+                ]
+              },
+              {
+                "name": "Full Heal",
+                "count": [
+                  3,
+                  3
+                ]
+              },
+              {
+                "name": "Max Reive",
+                "count": [
+                  2,
+                  2
+                ]
+              },
+              {
+                "name": "PP Potion",
+                "count": [
+                  3,
+                  3
+                ]
+              },
+              {
+                "name": "SP Potion",
+                "count": [
+                  3,
+                  3
+                ]
               },
               {
                 "name": "Pokeball",
                 "count": [
-                  9,
-                  9
-                ],
-                "sprite_path": "ingame_ui/ball.png"
+                  99,
+                  99
+                ]
+              },
+              {
+                "name": "Great Ball",
+                "count": [
+                  50,
+                  50
+                ]
+              },
+              {
+                "name": "Ultra Ball",
+                "count": [
+                  20,
+                  20
+                ]
+              },
+              {
+                "name": "Master Ball",
+                "count": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "name": "Quick Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Timer Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Dusk Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Net Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Dive Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Nest Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Repeat Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Heal Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Luxury Ball",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Premier Ball",
+                "count": [
+                  10,
+                  10
+                ]
+              },
+              {
+                "name": "Fast Ball",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Level Ball",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Love Ball",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Lure Ball",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Heavy Ball",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Moon Ball",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Friend Ball",
+                "count": [
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Dream Ball",
+                "count": [
+                  3,
+                  3
+                ]
+              },
+              {
+                "name": "Beast Ball",
+                "count": [
+                  3,
+                  3
+                ]
               },
               {
                 "name": "X Attack",
                 "count": [
-                  3,
-                  3
-                ],
-                "sprite_path": "ingame_ui/potion.png",
-                "stat_boost": "atk",
-                "boost_amount": 2
+                  5,
+                  5
+                ]
               },
               {
                 "name": "X Defense",
                 "count": [
-                  3,
-                  3
-                ],
-                "sprite_path": "ingame_ui/potion.png",
-                "stat_boost": "def",
-                "boost_amount": 2
+                  5,
+                  5
+                ]
               },
               {
                 "name": "X Sp. Atk",
                 "count": [
-                  3,
-                  3
-                ],
-                "sprite_path": "ingame_ui/potion.png",
-                "stat_boost": "spa",
-                "boost_amount": 2
+                  5,
+                  5
+                ]
               },
               {
                 "name": "X Sp. Def",
                 "count": [
-                  3,
-                  3
-                ],
-                "sprite_path": "ingame_ui/potion.png",
-                "stat_boost": "spd",
-                "boost_amount": 2
+                  5,
+                  5
+                ]
               },
               {
                 "name": "X Speed",
                 "count": [
-                  3,
-                  3
-                ],
-                "sprite_path": "ingame_ui/potion.png",
-                "stat_boost": "spe",
-                "boost_amount": 2
+                  5,
+                  5
+                ]
+              },
+              {
+                "name": "Evolution Stone",
+                "count": [
+                  99,
+                  99
+                ]
               }
             ]
           }
+        },
+        {
+          "x": 18.0,
+          "y": 30.0
         }
       ]
+    },
+    {
+      "path": "world.tmx",
+      "teleport": [],
+      "player": {
+        "x": 12.0,
+        "y": 12.0
+      },
+      "enemy_trainers": [],
+      "npcs": []
     },
     {
       "path": "gym.tmx",
@@ -145,7 +342,6 @@
           "destination": "map.tmx"
         }
       ],
-      "warps": [],
       "player": {
         "x": 12.0,
         "y": 12.0
@@ -156,17 +352,17 @@
   ],
   "current_map": "map.tmx",
   "player": {
-    "x": 24.419163922586023,
-    "y": 30.663833477758637
+    "x": 24.0,
+    "y": 30.0
   },
   "bag": {
     "monsters": [
       {
         "id": 1,
         "name": "Pikachu",
-        "level": 25,
-        "exp": 0,
-        "hp": 35,
+        "level": 1,
+        "exp": 1,
+        "hp": 30,
         "IV": {
           "hp": 15,
           "atk": 15,
@@ -206,188 +402,45 @@
             "acc": 100
           }
         ]
-      },
-      {
-        "id": 2,
-        "name": "Charizard",
-        "level": 36,
-        "exp": 0,
-        "hp": 0,
-        "IV": {
-          "hp": 15,
-          "atk": 15,
-          "def": 15,
-          "spa": 15,
-          "spd": 15,
-          "spe": 15
-        },
-        "EV": {
-          "hp": 64,
-          "atk": 64,
-          "def": 64,
-          "spa": 64,
-          "spd": 64,
-          "spe": 64
-        },
-        "move": [
-          {
-            "name": "Quick Attack",
-            "type": "nor",
-            "cat": "Normal Attack",
-            "power": 60,
-            "acc": 95
-          }
-        ]
-      },
-      {
-        "id": 3,
-        "name": "Blastoise",
-        "level": 32,
-        "exp": 0,
-        "hp": 0,
-        "IV": {
-          "hp": 15,
-          "atk": 15,
-          "def": 15,
-          "spa": 15,
-          "spd": 15,
-          "spe": 15
-        },
-        "EV": {
-          "hp": 64,
-          "atk": 64,
-          "def": 64,
-          "spa": 64,
-          "spd": 64,
-          "spe": 64
-        },
-        "move": [
-          {
-            "name": "Quick Attack",
-            "type": "nor",
-            "cat": "Normal Attack",
-            "power": 60,
-            "acc": 95
-          }
-        ]
-      },
-      {
-        "id": 4,
-        "name": "Venusaur",
-        "level": 30,
-        "exp": 0,
-        "hp": 100,
-        "IV": {
-          "hp": 15,
-          "atk": 15,
-          "def": 15,
-          "spa": 15,
-          "spd": 15,
-          "spe": 15
-        },
-        "EV": {
-          "hp": 64,
-          "atk": 64,
-          "def": 64,
-          "spa": 64,
-          "spd": 64,
-          "spe": 64
-        },
-        "move": [
-          {
-            "name": "Quick Attack",
-            "type": "nor",
-            "cat": "Normal Attack",
-            "power": 60,
-            "acc": 95
-          }
-        ]
-      },
-      {
-        "id": 5,
-        "name": "Dragonite",
-        "level": 40,
-        "exp": 0,
-        "hp": 100,
-        "IV": {
-          "hp": 15,
-          "atk": 15,
-          "def": 15,
-          "spa": 15,
-          "spd": 15,
-          "spe": 15
-        },
-        "EV": {
-          "hp": 64,
-          "atk": 64,
-          "def": 64,
-          "spa": 64,
-          "spd": 64,
-          "spe": 64
-        },
-        "move": [
-          {
-            "name": "Quick Attack",
-            "type": "roc",
-            "cat": "Normal Attack",
-            "power": 60,
-            "acc": 95
-          }
-        ]
       }
     ],
     "items": [
       {
         "name": "Potion",
-        "count": 5,
-        "sprite_path": "ingame_ui/potion.png",
-        "healing": 20
+        "count": 5
       },
       {
         "name": "Coins",
-        "count": 3,
-        "sprite_path": "ingame_ui/coin.png"
+        "count": 3
       },
       {
         "name": "Pokeball",
-        "count": 9,
-        "sprite_path": "ingame_ui/ball.png"
+        "count": 0
       },
       {
         "name": "X Attack",
-        "count": 2,
-        "sprite_path": "ingame_ui/potion.png",
-        "stat_boost": "atk",
-        "boost_amount": 2
+        "count": 2
       },
       {
         "name": "X Defense",
-        "count": 2,
-        "sprite_path": "ingame_ui/potion.png",
-        "stat_boost": "def",
-        "boost_amount": 2
+        "count": 2
       },
       {
         "name": "X Sp. Atk",
-        "count": 2,
-        "sprite_path": "ingame_ui/potion.png",
-        "stat_boost": "spa",
-        "boost_amount": 2
+        "count": 2
       },
       {
         "name": "X Sp. Def",
-        "count": 2,
-        "sprite_path": "ingame_ui/potion.png",
-        "stat_boost": "spd",
-        "boost_amount": 2
+        "count": 2
       },
       {
         "name": "X Speed",
-        "count": 2,
-        "sprite_path": "ingame_ui/potion.png",
-        "stat_boost": "spe",
-        "boost_amount": 2
+        "count": 2
       }
-    ]
-  }
+    ],
+    "money": 3000
+  },
+  "player_level": 5,
+  "fight_count": 0,
+  "username": "Mo"
 }

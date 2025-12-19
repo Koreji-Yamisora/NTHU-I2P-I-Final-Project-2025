@@ -1,79 +1,50 @@
-from enum import FlagBoundary
 import pygame as pg
-from src import data
-from src.utils import GameSettings
+from src.utils import GameSettings, crd, Logger, color
 from src.sprites import Sprite, Text, BackgroundSprite
 from src.scenes.scene import Scene
-from src.interface.components import Button
-from src.core.services import (
-    scene_manager,
-    sound_manager,
-    input_manager,
-    resource_manager,
-)
-from typing import override
-from src.interface.components import Overlay
-from src.core.managers import GameManager
-from src.core import gh
-from src.utils import crd, Logger, color
+from src.core.services import scene_manager, sound_manager, input_manager
+from src.core.gm_helper import gh
+from typing import override, Optional, Union, Generator
 from src.interface import overlay_combat as oc
-import importlib
-from src.data import poketype, pokedex
+from src.data import pokedex
 import random
-from dataclasses import dataclass
+
+from src.utils.combat import CombatLogic, CombatAI
+from src.utils.combat import CombatType as ct
+from src.utils.combat.combat_online import OnlineCombatHandler
 
 
 class CombatScene(Scene):
-    """Unified combat framework for all battle types.
+    """Unified combat framework"""
 
-    This scene handles turn-based Pokemon-style combat with speed-based initiative,
-    supporting wild encounters, trainer battles, and future PvP modes. The combat
-    system uses a phased approach: action selection, turn queue building, and
-    sequential action execution.
-
-    Attributes:
-        combat_type (str): Type of combat - "wild", "trainer", or "pvp"
-        catching_enabled (bool): Whether catching Pokemon is allowed
-        monster1 (dict): Player's active Pokemon
-        monster2 (dict): Enemy's active Pokemon
-        stat_stages (dict): Stat stage modifiers (-6 to +6) for both Pokemon
-        turn_queue (list): Ordered list of actions to execute this turn
-        executing_turn (bool): Whether turn is currently being executed
-
-    Example:
-        >>> scene = CombatScene(combat_type="wild")
-        >>> scene.enter()
-        >>> # Combat begins with turn-based system
-    """
-
-    # Type annotations for class attributes
-    combat_type: str
+    combat_type: ct
     catching_enabled: bool
     background: BackgroundSprite
-    monster1: dict
-    monster2: dict
-    current: int
-    enemy: int
+    m1: dict
+    m2: dict
+    ci1: int
+    ci2: int
 
-    # UI Components
+    # UI
     bg2: Sprite
     bg3: Sprite
+    bg: Sprite
+    victory: Optional[oc.Victory]  # type: ignore
     noti: Text
-    action_overlay: "oc.ActionOverlay"
-    move_overlay: "oc.MoveOverlay"
-    item_overlay: "oc.ItemOverlay"
-    switch_UI: "oc.SwitchOverlay"
-    health_overlay: "oc.HealthOverlay"
 
-    # Combat state
+    # Logic
+    logic: Optional[CombatLogic]
+    ai: Optional[CombatAI]
+    handler: Optional[OnlineCombatHandler]
+
+    # State
     player_action: dict | None
-    enemy_action: dict | None
     turn_queue: list
     executing_turn: bool
     turn_timer: float
-    stat_stages: dict
+    current_action_idx: int
 
-    # Battle flags
+    # Flags
     pfainted: bool
     efainted: bool
     catching: bool
@@ -81,18 +52,31 @@ class CombatScene(Scene):
     win: bool
     lose: bool
     swapping: bool
+    waiting_for_action: bool
+    player_turn: bool
 
     # Misc
     exit_cd: float
-    cd: float
     noti_cd: float
     ntcon: bool
     move: int | None
+    run_iter: Optional[Generator]
 
-    def __init__(self, combat_type: str = "wild") -> None:
+    def __init__(self, combat_type: Union[ct, str] = ct.WILD) -> None:
         super().__init__()
+        if isinstance(combat_type, str):
+            try:
+                combat_type = ct(combat_type)
+            except ValueError:
+                combat_type = ct.WILD
+
         self.combat_type = combat_type
-        self.catching_enabled = combat_type == "wild"
+        self.catching_enabled = self.combat_type == ct.WILD
+
+        self.logic = None
+        self.ai = None
+        self.handler = None
+
         self.exit_cd = 0.0
         self.pfainted = False
         self.efainted = False
@@ -101,108 +85,57 @@ class CombatScene(Scene):
         self.win = False
         self.lose = False
         self.swapping = False
+        self.waiting_for_action = False
+        self.player_turn = False
+        self.executing_turn = False
+        self.turn_queue = []
+        self.player_action = None
+        self.current_action_idx = 0
+        self.turn_timer = 0.0
+
         self.background = BackgroundSprite("backgrounds/background2.png")
-        self.cd = 0.0
         self.noti_cd = 0.6
         self.ntcon = False
+        self.run_iter = None
         self.move = None
+
         sw = crd(GameSettings.SCREEN_WIDTH)
         sh = crd(GameSettings.SCREEN_HEIGHT)
-        self.bg2 = Sprite("UI/raw/UI_Flat_Frame01a.png", (sw, sh.per(20)))
-        self.bg2.rect.bottom = sh
-        self.bg2.image = color.recol(self.bg2.image, (90, 90, 90))
-        self.bg3 = Sprite("UI/raw/UI_Flat_Frame01a.png", (sw.per(55), sh.per(15)))
-        self.bg3.rect.bottomleft = sh.per(3), sh - sh.per(3)
-        self.bg3.image = color.recol(self.bg3.image, (255, 255, 255))
-        self.bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(15)))
+        self.bg2 = Sprite(
+            "UI/raw/UI_Flat_Frame01a.png",
+            (sw, sh.per(20)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
+        self.bg2.image = color.recol(self.bg2.image, (120, 120, 120))
+        self.bg3 = Sprite(
+            "UI/raw/UI_Flat_Frame01a.png",
+            (sw.per(55), sh.per(15)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
+        self.bg3.image = color.recol(self.bg3.image, (120, 120, 120))
+        self.bg = Sprite(
+            "UI/raw/UI_Flat_Frame03a.png",
+            (sw.per(40), sh.per(15)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
+        self.bg2.rect.bottomleft = (0, sh)
+        self.bg3.rect.bottomleft = (sh.per(3), sh - sh.per(3))
+        self.bg.image = color.recol(self.bg.image, (120, 120, 120))
         self.bg.rect.bottomright = sw - sh.per(3), sh - sh.per(3)
         self.victory = None
-        self._init()
 
-    def _init(self):
+        self._init_overlays()
+        self.noti = Text("", 32, "Black")
+
+    def _init_overlays(self):
         self.item_overlay = oc.ItemOverlay()
         self.action_overlay = oc.ActionOverlay()
         self.health_overlay = oc.HealthOverlay()
         self.switch_UI = oc.SwitchOverlay()
-        self.move_refresh()
-
-    def move_refresh(self):
-        """Move Refresh."""
         self.move_overlay = oc.MoveOverlay()
-
-    def load_data(self):
-        """Load data."""
-        if not gh.gm:
-            gh.load()
-        elif not gh.gm.current_fight:
-            self.exit()
-        else:
-            self._init()
-            self.current = 4
-            self.enemy = 0
-            self.action_overlay.is_active = True
-            self.action_overlay.is_passive = True
-            self.next = None
-            self.player_turn = True
-            self.waiting_for_action = True
-            self.clear()
-            self.monster1: dict = gh.gm.bag.monsters[self.current]
-            Logger.debug(f"{gh.gm.current_fight.monsters}")
-            self.monster2: dict = gh.gm.current_fight.monsters[self.enemy]
-            self.img()
-            self.items = gh.gm.bag.get_items()
-            self.turn = True
-            self.move_overlay.inmove(self.monster1["move"])
-            self.health_overlay.load()
-            sh = crd(GameSettings.SCREEN_HEIGHT)
-            self.noti = Text(f"What will {self.monster1['name']} do?", 32, "Black")
-            self.noti.rect.topleft = (
-                self.bg3.rect.left + sh.per(3),
-                self.bg3.rect.top + sh.per(2),
-            )
-            self.item_overlay.init()
-            self.switch_UI.init()
-            self.move_refresh()
-            self.move_overlay.inmove(self.monster1["move"])
-            self.player_action = None
-            self.enemy_action = None
-            self.turn_queue = []
-            self.executing_turn = False
-            self.turn_timer = 0.0
-            self.stat_stages = {
-                "player": {"atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0},
-                "enemy": {"atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0},
-            }
-
-    def img(self):
-        """Img."""
-        wid, hid = crd(GameSettings.SCREEN_WIDTH), crd(GameSettings.SCREEN_HEIGHT)
-        self.m1_sprite = Sprite(
-            pokedex.data[self.monster1["id"]]["fight_path"], (wid, hid)
-        )
-        w, h = self.m1_sprite.image.get_size()
-        new = w // 2
-        frame = self.m1_sprite.image.subsurface(pg.Rect(new, 0, new, h))
-        self.m1_sprite.image = frame
-        self.m1_sprite.rect.bottom = hid - hid.per(20)
-        self.m2_sprite = Sprite(
-            pokedex.data[self.monster2["id"]]["fight_path"], (wid // 2, hid // 2)
-        )
-        w, h = self.m2_sprite.image.get_size()
-        new = w // 2
-        frame = self.m2_sprite.image.subsurface(pg.Rect(0, 0, new, h))
-        self.m2_sprite.image = frame
-        self.m2_sprite.rect.centerx = wid
-
-    def clear(self):
-        """Clear."""
-        self.monster1 = {}
-        self.monster2 = {}
-        self.items = []
 
     @override
     def enter(self) -> None:
-        """Enter."""
         sound_manager.play_bgm("RBY 101 Opening (Part 1).ogg")
         self.clear()
         self.load_data()
@@ -210,13 +143,86 @@ class CombatScene(Scene):
 
     @override
     def exit(self) -> None:
-        """Exit."""
         self.save()
         self.clear()
 
-    def notichange(self, text: (str | list[str])):
-        """Notichange."""
+    def clear(self):
+        self.m1 = {}
+        self.m2 = {}
+        self.turn_queue = []
+        self.player_action = None
+        self.executing_turn = False
 
+    def load_data(self):
+        """Child classes must implement this to load specific data"""
+        raise NotImplementedError("Subclasses must implement load_data")
+
+    def common_ui_init(self):
+        """Common UI initialization for all combat scenes"""
+        sh = crd(GameSettings.SCREEN_HEIGHT)
+        self.noti = Text(f"What will {self.m1['name']} do?", 32, "Black")
+        self.noti.rect.topleft = (
+            self.bg3.rect.left + sh.per(3),
+            self.bg3.rect.top + sh.per(2),
+        )
+
+        self.waiting_for_action = True
+        self.player_turn = True
+        self.executing_turn = False
+        self.turn_timer = 0.0
+
+    def init_logic(self):
+        self.logic = CombatLogic(self.m1, self.m2)
+        if self.combat_type != ct.PVP:
+            self.ai = CombatAI(self.logic, self.combat_type.value)
+        elif (
+            gh.gm.current_fight
+            and hasattr(gh.gm.current_fight, "opponent_id")
+            and gh.gm.current_fight.opponent_id
+        ):
+            self.init_handler(gh.gm.current_fight.opponent_id)
+
+    def init_handler(self, opponent_id: int):
+        self.logic = CombatLogic(self.m1, self.m2)  # Re-init logic just in case
+        self.handler = OnlineCombatHandler(self.logic, opponent_id)
+        Logger.info(f"Initialized PVP Handler with opponent {opponent_id}")
+
+    def _img(self):
+        "Load Pokemon Sprites"
+        try:
+            wid, hid = crd(GameSettings.SCREEN_WIDTH), crd(GameSettings.SCREEN_HEIGHT)
+            self.m1_sprite = Sprite(
+                pokedex.data[self.m1["id"]]["fight_path"], (wid, hid)
+            )
+            w, h = self.m1_sprite.image.get_size()
+            new = w // 2
+            frame = self.m1_sprite.image.subsurface(pg.Rect(new, 0, new, h))
+            self.m1_sprite.image = frame
+            self.m1_sprite.rect.bottom = hid - hid.per(20)
+
+            self.m2_sprite = Sprite(
+                pokedex.data[self.m2["id"]]["fight_path"], (wid // 2, hid // 2)
+            )
+            w, h = self.m2_sprite.image.get_size()
+            new = w // 2
+            frame = self.m2_sprite.image.subsurface(pg.Rect(0, 0, new, h))
+            self.m2_sprite.image = frame
+            self.m2_sprite.rect.centerx = wid
+        except Exception as e:
+            Logger.error(f"Error loading sprites: {e}")
+
+    def move_refresh(self):
+        self.move_overlay = oc.MoveOverlay()
+        if self.m1:
+            self.move_overlay.inmove(self.m1.get("move", []))
+
+    def save(self):
+        if hasattr(self, "m1") and self.m1:
+            gh.gm.bag.monsters[self.ci1] = self.m1
+        gh.gm.bag.save_battle()
+        gh.gm.bag.update_bag()
+
+    def notichange(self, text: (str | list[str])):
         def _cooldown(text: list[str]):
             for t in text:
                 yield t
@@ -224,495 +230,535 @@ class CombatScene(Scene):
         if isinstance(text, str):
             self.noti.change_text(text)
         else:
-            self.run = _cooldown(text)
+            self.run_iter = _cooldown(text)
             self.ntcon = True
 
     def text_update(self, dt):
-        """Text Update."""
         self.noti_cd -= dt
         if self.ntcon:
             if self.noti_cd <= 0:
-                self.noti_cd = 1
+                self.noti_cd = 1.0  # 1 second delay
                 try:
-                    self.notichange(next(self.run))
+                    if self.run_iter:
+                        self.notichange(next(self.run_iter))
                 except StopIteration:
                     self.ntcon = False
+                    self.run_iter = None
 
-    def save(self):
-        """Save."""
-        gh.gm.bag.monsters[self.current] = self.monster1
-        gh.gm.bag.save_battle(gh.gm.bag.monsters)
-        gh.gm.bag.update_bag()
-
-    def switch_mon(self, idx):
-        """Switch Mon."""
+    def switch_mon(self, idx: int):
         self.save()
         for i, mon in enumerate(gh.gm.bag.monsters):
             if mon["idx"] == idx:
-                self.current = i
-                self.monster1 = mon
+                self.ci1 = i
+                self.m1 = mon
                 break
+
+        # Update Logic with new monster
+        if self.logic:
+            self.logic.pc1 = self.m1
+
         self.health_overlay.load()
         self.move_refresh()
-        self.move_overlay.inmove(self.monster1["move"])
-        self.img()
-        self.notichange(f"You sent out {self.monster1['name']}!")
+        self._img()
+        self.notichange(f"You sent out {self.m1['name']}!")
 
     def switch_enemy(self, n: int):
-        """Switch to a new enemy monster"""
-        Logger.debug(f"Switching to enemy monster {n}")
-        self.enemy = n
-        self.monster2 = gh.gm.current_fight.monsters[n]
+        self.ci2 = n
+        self.m2 = gh.gm.current_fight.monsters[n]
+        if self.logic:
+            self.logic.pc2 = self.m2
+
         self.health_overlay.load()
-        self.img()
-        self.notichange(f"Enemy sent out {self.monster2['name']}!")
-
-    def attack(self, attacker: dict, defender: dict, move: dict) -> int:
-        """Calculate damage from attacker to defender using the given move"""
-        target = 1
-        weather = 1
-        critical = 1
-        ran = random.randint(85, 100) / 100
-        acu = 1 if random.randint(0, 100) < move["acc"] else 0
-        stab = 1.5 if attacker["type"] == move["type"] else 1
-        ty: float = poketype.effective(move["type"], defender["type"])
-        vai = target * weather * critical * ran * stab * ty * acu
-        dmg = 0
-        is_player_attacker = attacker == self.monster1
-        is_player_defender = defender == self.monster1
-        attacker_stages = self.stat_stages["player" if is_player_attacker else "enemy"]
-        defender_stages = self.stat_stages["player" if is_player_defender else "enemy"]
-        if move["cat"] == "Normal Attack":
-            atk_multiplier = self.get_stat_multiplier(attacker_stages["atk"])
-            def_multiplier = self.get_stat_multiplier(defender_stages["def"])
-            dmg = (
-                (2 * (attacker["level"] / 5) + 2)
-                * move["power"]
-                * (
-                    attacker["atk"]
-                    * atk_multiplier
-                    / (defender["def"] * def_multiplier)
-                )
-                / 50
-                + 2
-            ) * vai
-        elif move["cat"] == "Special Attack":
-            spa_multiplier = self.get_stat_multiplier(attacker_stages["spa"])
-            spd_multiplier = self.get_stat_multiplier(defender_stages["spd"])
-            dmg = (
-                (2 * (attacker["level"] / 5) + 2)
-                * move["power"]
-                * (
-                    attacker["spa"]
-                    * spa_multiplier
-                    / (defender["spd"] * spd_multiplier)
-                )
-                / 50
-                + 2
-            ) * vai
-        Logger.debug(
-            f"{attacker['name']} dealt {int(dmg)} damage to {defender['name']}"
-        )
-        return int(dmg)
-
-    def eff_mes(self, type_effectiveness: float, accuracy: int) -> str:
-        """Generate effectiveness message"""
-        if type_effectiveness > 1:
-            return "It's super effective!"
-        elif type_effectiveness < 1:
-            return "It's not very effective..."
-        elif type_effectiveness == 0:
-            return f"It doesn't affect {self.monster2['name']}..."
-        elif accuracy == 0:
-            return "It missed..."
-        else:
-            return ""
-
-    def use_potion(self, monster: dict, item: dict) -> bool:
-        """Apply potion healing to a monster. Returns True if healing was applied."""
-        if monster["chp"] >= monster["hp"]:
-            self.notichange(f"{monster['name']} is already at full HP!")
-            return False
-        healing = item.get("healing", 20)
-        old_hp = monster["chp"]
-        monster["chp"] = min(monster["chp"] + healing, monster["hp"])
-        actual_healing = monster["chp"] - old_hp
-        self.notichange(f"{monster['name']} restored {actual_healing} HP!")
-        Logger.debug(f"Potion used: {item['name']} healed {actual_healing} HP")
-        if hasattr(self, "health_overlay"):
-            self.health_overlay.health_update()
-        return True
-
-    def use_stat_boost(self, monster: dict, item: dict, is_player: bool) -> bool:
-        """Apply stat boost to a monster. Returns True if boost was applied."""
-        stat = item.get("stat_boost")
-        boost_amount = item.get("boost_amount", 1)
-        if not stat:
-            self.notichange("Can't use that item!")
-            return False
-        stages = self.stat_stages["player" if is_player else "enemy"]
-        if stages[stat] >= 6:
-            self.notichange(f"{monster['name']}'s {stat.upper()} won't go higher!")
-            return False
-        stages[stat] = min(6, stages[stat] + boost_amount)
-        stat_names = {
-            "atk": "Attack",
-            "def": "Defense",
-            "spa": "Sp. Attack",
-            "spd": "Sp. Defense",
-            "spe": "Speed",
-        }
-        boost_text = "greatly " if boost_amount >= 2 else ""
-        self.notichange(f"{monster['name']}'s {stat_names[stat]} {boost_text}rose!")
-        Logger.debug(
-            f"Stat boost: {monster['name']} {stat} +{boost_amount} (now at stage {stages[stat]})"
-        )
-        return True
-
-    def get_stat_multiplier(self, stage: int) -> float:
-        """Get the multiplier for a given stat stage (-6 to +6)"""
-        multipliers = {
-            (-6): 0.25,
-            (-5): 0.28,
-            (-4): 0.33,
-            (-3): 0.4,
-            (-2): 0.5,
-            (-1): 0.66,
-            (0): 1.0,
-            (1): 1.5,
-            (2): 2.0,
-            (3): 2.5,
-            (4): 3.0,
-            (5): 3.5,
-            (6): 4.0,
-        }
-        return multipliers.get(stage, 1.0)
+        self._img()
+        self.notichange(f"Enemy sent out {self.m2['name']}!")
 
     def resolve_turn(self):
-        """Calculate turn order and prepare execution queue"""
         actions = []
+        # Player Action
         if self.player_action:
             p_act = self.player_action
             if p_act["type"] == "move":
                 actions.append(
                     (
-                        0,
-                        self.monster1["spe"],
-                        self.monster1,
-                        self.monster2,
+                        self.m1["spe"],
+                        self.m1,
+                        self.m2,
                         p_act["value"],
                         True,
+                        p_act.get("seed", 0),
                     )
                 )
             else:
-                actions.append((1, 999, self.monster1, self.monster2, p_act, True))
-        enemy_move = random.choice(self.monster2["move"])
-        actions.append(
-            (0, self.monster2["spe"], self.monster2, self.monster1, enemy_move, False)
-        )
-        actions.sort(key=lambda x: (x[0], x[1]), reverse=True)
+                # High/Infinite speed for non-move actions
+                actions.append(
+                    (999, self.m1, self.m2, p_act, True, p_act.get("seed", 0))
+                )
+
+        # Enemy Action
+        if self.combat_type == ct.PVP and self.handler:
+            self.handler.send_action(self.player_action, self.player_action.get("seed"))
+            # PvP resolution is handled asynchronously when opponent action arrives
+            return  # Don't build queue yet
+
+        elif self.ai:
+            e_act = self.ai.get_enemy_action(self.m2)
+            if e_act["type"] == "move":
+                actions.append(
+                    (self.m2["spe"], self.m2, self.m1, e_act["value"], False, 0)
+                )
+            else:
+                actions.append((999, self.m2, self.m1, e_act, False, 0))
+
+        actions.sort(key=lambda x: x[0], reverse=True)
         self.turn_queue = actions
         self.executing_turn = True
         self.turn_timer = 0.0
         self.current_action_idx = 0
 
     def execute_next_action(self):
-        """Execute Next Action."""
         if self.current_action_idx >= len(self.turn_queue):
             self.executing_turn = False
             self.player_action = None
             self.waiting_for_action = True
             self.player_turn = True
+
+            # PVP cleanup
+            if self.combat_type == ct.PVP and self.handler:
+                self.handler.reset_turn()
             return
-        priority, speed, attacker, defender, action, is_player = self.turn_queue[
+
+        speed, attacker, defender, action, is_player, _ = self.turn_queue[
             self.current_action_idx
         ]
         self.current_action_idx += 1
+
         if attacker["chp"] <= 0:
-            Logger.debug(f"{attacker['name']} is fainted and cannot move.")
             return
+
         is_non_move_action = (
-            is_player
-            and isinstance(action, dict)
+            isinstance(action, dict)
             and "type" in action
             and action["type"] in ["switch", "item", "catch", "run"]
         )
+
         if is_non_move_action:
             if action["type"] == "switch":
-                self.switch_mon(action["value"])
+                if is_player:
+                    self.switch_mon(action["value"])
+                else:
+                    self.switch_enemy(action["value"])
             elif action["type"] == "item":
-                item = action["value"]
-                if item:
-                    if "healing" in item:
-                        self.use_potion(self.monster1, item)
-                    elif "stat_boost" in item:
-                        self.use_stat_boost(self.monster1, item, is_player=True)
-                    else:
-                        self.notichange("Used an item!")
+                if is_player:
+                    self.handle_item(action["value"])
             elif action["type"] == "catch":
-                self.do_catching()
+                self.do_catching(action["value"])
             elif action["type"] == "run":
                 self.run_attempt()
         else:
+            # Attacking
             self.notichange([f"{attacker['name']} used {action['name']}!", ""])
-            damage = self.attack(attacker, defender, action)
-            Logger.debug(
-                f"Damage: {damage}. Defender HP before: {defender['chp']}. Attacker: {attacker['name']}, Defender: {defender['name']}"
-            )
-            defender["chp"] -= damage
-            if defender["chp"] < 0:
-                defender["chp"] = 0
-            Logger.debug(f"Defender HP after: {defender['chp']}")
+
+            # Set seed if available
+            if isinstance(action, dict) and "seed" in action:
+                if self.logic:
+                    self.logic.set_seed(action["seed"])
+            elif self.player_action and "seed" in self.player_action and is_player:
+                # Fallback for player action if seed not in action dict directly
+                if self.logic:
+                    self.logic.set_seed(self.player_action["seed"])
+
+            # Logic attack
+            dmg = self.logic.attack(attacker, defender, action) if self.logic else 0
+            defender["chp"] = max(0, defender["chp"] - dmg)
             self.health_overlay.health_update()
+
+            # Animation: Shake and Flash
+            if dmg > 0:
+                target_sprite = None
+                if is_player:
+                    # Player attacked Enemy -> Enemy takes damage
+                    target_sprite = self.m2_sprite
+                else:
+                    # Enemy attacked Player -> Player takes damage
+                    target_sprite = self.m1_sprite
+
+                if target_sprite:
+                    target_sprite.shake(intensity=5, duration=0.4)
+                    target_sprite.flash(color=(255, 0, 0), duration=0.4)
+
+            # Check effectiveness (simplification as logic doesn't return it yet)
+            # eff = self.logic.eff_mes(...)
+
             if defender["chp"] <= 0:
                 if is_player:
                     self.enemy_fainted()
                 else:
                     self.fainted()
+
         self.save()
 
-    def add_yield(self, fated: dict, target: dict) -> None:
-        """Add yield."""
-        base = pokedex.data[fated["id"]]
-        if "yield" in base:
-            for stat, amount in base["yield"].items():
-                if stat in target["EVA"]:
-                    target["EVA"][stat] += amount
+    def handle_item(self, item):
+        if not self.logic:
+            return
+        if "healing" in item:
+            success, msg = self.logic.use_potion(self.m1, item)
+            self.notichange(msg)
+            if success:
+                self.health_overlay.health_update()
+        elif "stat_boost" in item:
+            success, msg = self.logic.use_stat_boost(self.m1, item, True)
+            self.notichange(msg)
 
-    def add_exp(self, fated: dict, target: dict) -> None:
-        """Add Exp."""
-        if self.combat_type == "trainer":
-            target["exp"] += (1.5 * random.randint(25, 50) * target["level"]) // 7
+    def do_catching(self, item=None):
+        if not self.catching_enabled:
+            self.notichange("Can't catch here!")
+            return
+
+        catch_rate = 1.0
+        if item:
+            # Look up catch rate from static data
+            static_data = pokedex.PokeItems.items.get(item["name"], {})
+            catch_rate = static_data.get("catch_rate", 1.0)
+
+        # Base chance modified by ball
+        # Assuming 85 was previous base chance?
+        # Let's make it smarter: (MaxHP - CurrentHP) / MaxHP * Rate?
+        # Or just use the multiplier on the base 85 for now to be safe.
+
+        base_chance = 50.0  # Lower base catch rate
+
+        # HP Factor: (1 - (Current / Max)) * 50
+        max_hp = self.m2["hp"]
+        cur_hp = self.m2["chp"]
+        hp_factor = (1.0 - (cur_hp / max_hp)) * 50.0 if max_hp > 0 else 50.0
+
+        final_chance = (base_chance + hp_factor) * catch_rate
+
+        Logger.info(
+            f"Catching {self.m2['name']} with {item['name']}. Chance: {final_chance}%"
+        )
+
+        if random.uniform(0, 100) < final_chance:
+            self.notichange(["Catching...", "Caught successfully!"])
+            gh.gm.bag.add_captured(self.m2)
+            self.done = True
         else:
-            target["exp"] += (random.randint(25, 50) * target["level"]) // 7
+            self.notichange(["Catching...", "Failed to catch!"])
 
     def run_attempt(self):
-        """Run Attempt."""
-        if 95 > random.randint(0, 100):
+        if random.randint(0, 100) < 95:
             scene_manager.change_scene("game")
         else:
-            self.notichange("You fail to run away.")
-
-    def doing_damage(self):
-        """Doing Damage."""
-        pass
-
-    def check_health(self):
-        """Check Health."""
-        h = False
-        monster = gh.gm.bag.monsters
-        for i, mon in enumerate(monster):
-            if mon["chp"] > 0:
-                h = True
-                break
-        return h
+            self.notichange("Failed to run away.")
 
     def enemy_fainted(self):
-        """Enemy Fainted."""
-        self.notichange(f"{self.monster2['name']} fainted!")
-        # Add experience and EVs to the active player monster
-        self.add_exp(self.monster2, self.monster1)
-        self.add_yield(self.monster2, self.monster1)
-        enemy_monsters = gh.gm.current_fight.monsters
+        self.notichange(f"{self.m2['name']} fainted!")
+        if self.logic:
+            self.logic.add_exp(self.m2, self.m1, self.combat_type == ct.TRAINER)
+            self.logic.add_yield(self.m2, self.m1)
+
         self.efainted = True
         self.next_enemy = None
+
+        enemy_monsters = gh.gm.current_fight.monsters
         for i, mon in enumerate(enemy_monsters):
             if mon["chp"] > 0:
-                Logger.debug(f"Next enemy: {mon}")
                 self.next_enemy = i
                 break
 
-    def try_team(self, dt):
-        """Try Team."""
-        if not self.health_overlay.animating:
-            if self.check_health():
-                if self.switch_UI.next is not None:
-                    Logger.debug(f"Switching to next pokemon: {self.switch_UI.next}")
-                    self.switch_mon(self.switch_UI.next)
-                    self.player_turn = False
-                    self.waiting_for_action = False
-                    self.switch_UI.next = None
-                    self.pfainted = False
-                    self.switch_UI.close()
-            else:
-                self.lose = True
-                self.victory = oc.Victory(0)
-                Logger.debug("Loses")
-                self.pfainted = False
+        if self.next_enemy is None:
+            self.win = True
+
+            # Update Player Level Logic
+            gh.gm.fight_count += 1
+            if gh.gm.fight_count % 2 == 0:
+                gh.gm.player_level += 1
+                self.notichange(f"Player Level grew to {gh.gm.player_level}!")
+
+            self.victory = oc.Victory(1)
 
     def fainted(self):
-        """Fainted."""
         self.pfainted = True
         self.switch_UI.forced = True
         self.switch_UI.init(forced=True)
         self.switch_UI.open()
 
-    def try_switching(self, dt):
-        """Try Switching."""
+    def try_switching(self):
+        if self.combat_type == ct.PVP:
+            return
+
         if not self.health_overlay.animating and self.efainted:
             if self.next_enemy is not None:
-                Logger.debug(f"Switching to next enemy: {self.next_enemy}")
                 self.switch_enemy(self.next_enemy)
                 self.player_turn = True
                 self.waiting_for_action = True
-            else:
-                self.win = True
-                self.victory = oc.Victory(1)
-                Logger.debug("Victory!")
-            self.efainted = False
+                self.efainted = False
+
+    def try_team(self):
+        if self.pfainted and not self.health_overlay.animating:
+            # Check if we have any health pokemon left
+            alive = any(m["chp"] > 0 for m in gh.gm.bag.monsters)
+            if not alive:
+                self.lose = True
+                self.victory = oc.Victory(0)
+            elif self.switch_UI.next is not None:
+                if self.logic:
+                    # Reset active monster in logic if needed?
+                    # self.switch_mon handles it.
+                    pass
+                self.switch_mon(self.switch_UI.next)
+
+                if self.combat_type == ct.PVP and self.handler:
+                    self.handler.send_action(
+                        {
+                            "type": "switch",
+                            "value": self.switch_UI.next,
+                            "seed": random.randint(0, 1000000),
+                        }
+                    )
+
+                self.pfainted = False
+                self.switch_UI.close()
+                self.switch_UI.next = None
+                self.waiting_for_action = True
+                self.player_turn = True
 
     def wait_exit(self, dt):
-        """Wait Exit."""
         self.exit_cd += dt
         self.action_overlay.close()
         self.move_overlay.close()
         self.item_overlay.close()
-        self.switch_UI.close()
-        if self.exit_cd >= 3 and (self.win or self.lose or self.done):
-            self.win = self.lose = self.done = False
-            self.exit_cd = 0
+        if self.exit_cd >= 3:
+            if self.combat_type == ct.PVP and self.handler:
+                self.handler.send_battle_end(self.win)
             scene_manager.change_scene("game")
-
-    def do_catching(self):
-        """Do Catching."""
-        if not self.catching_enabled:
-            self.notichange("Can't catch a trainer's Pokémon!")
-            self.catching = False
-            return
-        chance = 85
-        c = random.randint(0, 100)
-        if c < chance:
-            self.notichange(["Catching...", "Catched Succesfully"])
-            self.catched()
-        else:
-            self.notichange(["Catching...", "Fail to catch"])
-            self.catching = False
-
-    def catched(self):
-        """Catched."""
-        bag = getattr(gh, "gm").bag._monsters_data
-        m = self.monster2
-        pokemon = {
-            "id": m["id"],
-            "name": m["name"],
-            "level": m["level"],
-            "hp": m["chp"],
-            "IV": m["IV"],
-            "EV": m["EV"],
-            "move": m["move"],
-        }
-        bag.append(pokemon)
-        Logger.debug(f"monster : {bag[-1]}")
-        self.done = True
-        self.catching = False
 
     @override
     def update(self, dt: float) -> None:
-        """Update."""
         self.save()
-        self.try_switching(dt)
-        self.try_team(dt)
+        self.text_update(dt)
+        self.health_overlay.update(dt)
+
+        if hasattr(self, "m1_sprite"):
+            self.m1_sprite.update(dt)
+        if hasattr(self, "m2_sprite"):
+            self.m2_sprite.update(dt)
+
         if self.win or self.lose or self.done:
             if not self.health_overlay.animating:
                 self.wait_exit(dt)
-        elif self.pfainted:
-            self.switch_UI.forced = True
-            self.switch_UI.update(dt)
-            if self.switch_UI.selected:
-                self.switch_UI.selected = False
-        elif self.executing_turn:
+            return
+
+        # Check faint states
+        self.try_switching()
+        self.try_team()
+
+        if self.pfainted or self.efainted:
+            if self.pfainted:
+                self.switch_UI.update(dt)
+                if self.switch_UI.selected:
+                    self.switch_UI.selected = False
+            return
+
+        # Poll for Online Events
+        if self.combat_type == ct.PVP and self.handler and gh.online_manager:
+            # We need to keep connection alive and fetch events
+            # Use current player position if possible, or dummy values
+            if gh.gm and gh.gm.player:
+                p = gh.gm.player
+                # Keep sending position updates to maintain presence/visuals
+                gh.online_manager.update(
+                    p.position.x,
+                    p.position.y,
+                    gh.gm.current_map.path_name,
+                    p.direction.name.lower(),
+                    p.skin_idx if hasattr(p, "skin_idx") else 0,
+                    False,
+                )
+
+        # Turn Execution
+        if self.executing_turn:
             self.action_overlay.close()
-            self.move_overlay.close()
-            self.item_overlay.close()
-            self.switch_UI.close()
             if not self.ntcon and not self.health_overlay.animating:
                 self.turn_timer += dt
                 if self.turn_timer > 1.0:
                     self.execute_next_action()
                     self.turn_timer = 0.0
-        elif self.player_turn and not self.health_overlay.animating:
+            return
+
+        # PvP: Handle opponent switch if they are fainted
+        if self.combat_type == ct.PVP and self.efainted and self.handler:
+            if self.handler.opponent_action_received:
+                action = self.handler.get_opponent_action()
+                if action and action.get("type") == "switch":
+                    self.switch_enemy(action["value"])
+                    self.efainted = False
+                    self.handler.reset_turn()
+            return
+
+        # Player Input / Waiting
+        if self.player_turn and not self.health_overlay.animating:
+            # PVP specific
+            if self.combat_type == ct.PVP and self.handler:
+                # Check/Poll
+                if self.player_action and (
+                    self.handler.waiting_for_opponent
+                    or self.handler.opponent_action_received
+                ):
+                    if self.handler.is_ready_to_resolve():
+                        op_action = self.handler.get_opponent_action()
+                        # Build queue
+                        # Build queue
+                        actions = []
+                        if self.player_action:
+                            p_val = self.player_action["value"]
+                            # Inject seed into value if it's a dict (move)
+                            if isinstance(p_val, dict):
+                                p_val = p_val.copy()
+                                if "seed" in self.player_action:
+                                    p_val["seed"] = self.player_action["seed"]
+
+                            if self.player_action["type"] == "move":
+                                actions.append(
+                                    (
+                                        self.m1["spe"],
+                                        self.m1,
+                                        self.m2,
+                                        p_val,
+                                        True,
+                                        self.player_action.get("seed", 0),
+                                    )
+                                )
+                            else:
+                                actions.append(
+                                    (
+                                        999,
+                                        self.m1,
+                                        self.m2,
+                                        self.player_action,
+                                        True,
+                                        self.player_action.get("seed", 0),
+                                    )
+                                )
+
+                        if op_action:
+                            op_val = op_action.get("value")
+                            # Inject seed into value if it's a dict (move)
+                            if isinstance(op_val, dict):
+                                op_val = op_val.copy()
+                                if "seed" in op_action:
+                                    op_val["seed"] = op_action["seed"]
+
+                            if op_action["type"] == "move":
+                                actions.append(
+                                    (
+                                        self.m2["spe"],
+                                        self.m2,
+                                        self.m1,
+                                        op_val,
+                                        False,
+                                        op_action.get("seed", 0),
+                                    )
+                                )
+                            # Handle other opponent actions if supported (switch etc)
+
+                        # Sort by Speed (descending), then Seed (descending) for deterministic tie-break
+                        actions.sort(key=lambda x: (x[0], x[5]), reverse=True)
+                        self.turn_queue = actions
+                        self.executing_turn = True
+                        self.current_action_idx = 0
+                        self.turn_timer = 0.0
+                    else:
+                        self.notichange("Waiting for opponent...")
+                    return
+
             if self.waiting_for_action:
-                self.move_overlay.close()
-                self.item_overlay.close()
-                self.switch_UI.close()
-                self.action_overlay.open()
-                if self.action_overlay.is_move:
-                    self.action_overlay.close()
-                    self.move_overlay.open()
-                    self.move_overlay.update(dt)
-                    if self.move_overlay.selected:
-                        Logger.debug(f"Move selected in Scene. Move index: {self.move}")
-                        self.player_action = {
-                            "type": "move",
-                            "value": self.monster1["move"][self.move],
-                        }
-                        self.waiting_for_action = False
-                        self.move_overlay.selected = False
-                        self.action_overlay.is_move = False
-                        self.resolve_turn()
-                self.switch_UI.forced = False
-                if self.action_overlay.is_switch:
-                    self.switch_UI.open()
-                    self.action_overlay.close()
-                    self.switch_UI.update(dt)
-                    if self.switch_UI.selected:
-                        self.player_action = {
-                            "type": "switch",
-                            "value": self.switch_UI.next,
-                        }
-                        self.waiting_for_action = False
-                        self.switch_UI.selected = False
-                        self.switch_UI.close()
-                        self.action_overlay.is_switch = False
-                        self.resolve_turn()
-                elif self.action_overlay.is_item:
-                    self.action_overlay.close()
-                    self.item_overlay.open()
-                    self.item_overlay.update(dt)
-                    if self.item_overlay.selected:
-                        selected_item = self.item_overlay.selected_item
-                        if self.catching:
-                            action_type = "catch"
-                        elif selected_item and (
-                            "healing" in selected_item or "stat_boost" in selected_item
-                        ):
-                            action_type = "item"
-                        else:
-                            action_type = "item"
-                        self.player_action = {
-                            "type": action_type,
-                            "value": selected_item,
-                        }
-                        self.waiting_for_action = False
-                        self.item_overlay.selected = False
-                        self.action_overlay.is_item = False
-                        self.item_overlay.init()
-                        self.resolve_turn()
-                elif self.action_overlay.is_run:
-                    self.player_action = {"type": "run", "value": None}
+                self.handle_input_overlays(dt)
+
+    def handle_input_overlays(self, dt):
+        if self.action_overlay.is_move:
+            self.action_overlay.close()
+            self.move_overlay.open()
+            self.move_overlay.update(dt)
+            if self.move_overlay.selected:
+                if self.move is not None:
+                    self.player_action = {
+                        "type": "move",
+                        "value": self.m1["move"][self.move],
+                        "seed": random.randint(0, 1000000),  # Generate random seed
+                    }
                     self.waiting_for_action = False
-                    self.action_overlay.is_run = False
+                    self.move_overlay.selected = False
+                    self.move_overlay.close()
+                    self.action_overlay.is_move = False
                     self.resolve_turn()
-                else:
-                    self.action_overlay.open()
-                    self.action_overlay.update(dt)
-        self.health_overlay.update(dt)
-        self.text_update(dt)
+        elif self.action_overlay.is_switch:
+            self.action_overlay.close()
+            self.switch_UI.open()
+            self.switch_UI.update(dt)
+            if self.switch_UI.selected:
+                self.player_action = {
+                    "type": "switch",
+                    "value": self.switch_UI.next,
+                    "seed": random.randint(0, 1000000),
+                }
+                self.waiting_for_action = False
+                self.switch_UI.selected = False
+                self.switch_UI.close()
+                self.action_overlay.is_switch = False
+                self.resolve_turn()
+        elif self.action_overlay.is_item:
+            self.action_overlay.close()
+            self.item_overlay.open()
+            self.item_overlay.update(dt)
+            if self.item_overlay.selected:
+                item = self.item_overlay.selected_item
+                action_type = "item"
+                # Check if it's a ball
+                if "ball" in item["name"].lower():
+                    action_type = "catch"
+
+                self.player_action = {
+                    "type": action_type,
+                    "value": item,
+                    "seed": random.randint(0, 1000000),
+                }
+                self.waiting_for_action = False
+                self.item_overlay.selected = False
+                self.item_overlay.close()
+                self.action_overlay.is_item = False
+                self.resolve_turn()
+        elif self.action_overlay.is_run:
+            self.player_action = {
+                "type": "run",
+                "value": None,
+                "seed": random.randint(0, 1000000),
+            }
+            self.waiting_for_action = False
+            self.action_overlay.is_run = False
+            self.resolve_turn()
+        else:
+            self.action_overlay.open()
+            self.action_overlay.update(dt)
 
     @override
     def draw(self, screen: pg.Surface) -> None:
-        """Draw."""
         self.background.draw(screen)
         self.bg2.draw(screen)
         self.bg3.draw(screen)
         self.bg.draw(screen)
-        self.m1_sprite.draw(screen)
-        self.m2_sprite.draw(screen)
+
+        if hasattr(self, "m1_sprite"):
+            self.m1_sprite.draw(screen)
+        if hasattr(self, "m2_sprite"):
+            self.m2_sprite.draw(screen)
+
         self.action_overlay.draw(screen)
         self.health_overlay.draw(screen)
         self.noti.draw(screen)
         self.move_overlay.draw(screen)
         self.item_overlay.draw(screen)
         self.switch_UI.draw(screen)
+
         if self.victory:
             self.victory.draw(screen)

@@ -3,23 +3,22 @@ import pygame as pg
 
 
 class Scene:
-    """ scene."""
+    """scene."""
 
-    def __init__(self) ->None:
-        ...
+    def __init__(self) -> None: ...
 
-    def enter(self) ->None:
+    def enter(self) -> None:
         """Enter."""
         ...
 
-    def exit(self) ->None:
+    def exit(self) -> None:
         """Exit."""
         ...
 
-    def update(self, dt: float) ->None:
+    def update(self, dt: float) -> None:
         """Update."""
         ...
 
-    def draw(self, screen: pg.Surface) ->None:
+    def draw(self, screen: pg.Surface) -> None:
         """Draw."""
         ...

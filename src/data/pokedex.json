@@ -1,0 +1,141 @@
+{
+  "1": {
+    "sprite_path": "menu_sprites/menusprite1.png",
+    "fight_path": "sprites/sprite1.png",
+    "name": "Pikachu",
+    "evolution": {
+      "level": 25,
+      "to": 2,
+      "stone": true
+    },
+    "hp": 35,
+    "atk": 55,
+    "def": 40,
+    "spa": 50,
+    "spd": 50,
+    "spe": 90,
+    "type": [
+      "ele",
+      null
+    ],
+    "abi": [
+      "Static",
+      null
+    ],
+    "Moves": [
+      "Quick Attack",
+      "Thunder Shock",
+      null,
+      null
+    ],
+    "yield": {
+      "spe": 2
+    }
+  },
+  "2": {
+    "sprite_path": "menu_sprites/menusprite2.png",
+    "fight_path": "sprites/sprite2.png",
+    "name": "Charizard",
+    "evolution": {
+      "level": 50,
+      "to": 3,
+      "stone": true
+    },
+    "hp": 78,
+    "atk": 84,
+    "def": 78,
+    "spa": 109,
+    "spd": 85,
+    "spe": 100,
+    "type": [
+      "fir",
+      "fly"
+    ],
+    "abi": [
+      "Blaze",
+      null
+    ],
+    "Moves": [
+      "Quick Attack",
+      "Ember"
+    ],
+    "yield": {
+      "spa": 3
+    }
+  },
+  "3": {
+    "sprite_path": "menu_sprites/menusprite3.png",
+    "fight_path": "sprites/sprite3.png",
+    "name": "Blastoise",
+    "hp": 79,
+    "atk": 83,
+    "def": 100,
+    "spa": 85,
+    "spd": 105,
+    "spe": 78,
+    "type": [
+      "fir",
+      "fly"
+    ],
+    "abi": [
+      "Torrent",
+      null
+    ],
+    "yield": {
+      "spd": 3
+    }
+  },
+  "4": {
+    "sprite_path": "menu_sprites/menusprite4.png",
+    "fight_path": "sprites/sprite4.png",
+    "name": "Venusaur",
+    "hp": 80,
+    "atk": 82,
+    "def": 83,
+    "spa": 100,
+    "spd": 100,
+    "spe": 80,
+    "type": [
+      "gra",
+      "poi"
+    ],
+    "Moves": [
+      "Quick Attack",
+      "Vine Whip"
+    ],
+    "abi": [
+      "Overgrow",
+      null
+    ],
+    "yield": {
+      "spa": 2,
+      "spd": 1
+    }
+  },
+  "5": {
+    "sprite_path": "menu_sprites/menusprite5.png",
+    "fight_path": "sprites/sprite5.png",
+    "name": "Dragonite",
+    "hp": 91,
+    "atk": 134,
+    "def": 95,
+    "spa": 100,
+    "spd": 100,
+    "spe": 80,
+    "type": [
+      "dra",
+      "fly"
+    ],
+    "Moves": [
+      "Quick Attack",
+      "Dragon Breath"
+    ],
+    "abi": [
+      "Overgrow",
+      null
+    ],
+    "yield": {
+      "atk": 3
+    }
+  }
+}

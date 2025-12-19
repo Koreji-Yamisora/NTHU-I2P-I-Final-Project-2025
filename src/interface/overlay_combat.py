@@ -52,9 +52,12 @@ class HPbar(Overlay):
         self.w = w
         self.h = h
 
-        self.blank_bar = Sprite(p1, (self.w, self.h))
+        self.blank_bar = Sprite(
+            p1, (self.w, self.h), nine_grid_margins=(45, 45, 45, 45)
+        )
+        self.blank_bar.image = color.recol(self.blank_bar.image, (120, 120, 120))
 
-        self.fill_bar = Sprite(p2, (self.w, self.h))
+        self.fill_bar = Sprite(p2, (self.w, self.h), nine_grid_margins=(45, 45, 45, 45))
         self.og = self.fill_bar.image.copy()
 
         self.add_passive(self.blank_bar)
@@ -149,7 +152,9 @@ class HealthOverlay(Overlay):
             self.sh.per(2),
         )
         self.bg = Sprite(
-            "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(28), self.sh.per(15))
+            "UI/raw/UI_Flat_FrameSlot02a.png",
+            (self.sw.per(28), self.sh.per(15)),
+            nine_grid_margins=(45, 45, 45, 45),
         )
         self.bg.image = color.recol(self.bg.image, (120, 120, 120))
         self.bg.rect.bottomright = (self.sw - self.sh.per(5), self.sh - self.sh.per(25))
@@ -159,7 +164,9 @@ class HealthOverlay(Overlay):
             (self.sw - self.sh.per(5), self.sh - self.sh.per(25)), "bottomright"
         )
         self.bg2 = Sprite(
-            "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(28), self.sh.per(15))
+            "UI/raw/UI_Flat_FrameSlot02a.png",
+            (self.sw.per(28), self.sh.per(15)),
+            nine_grid_margins=(45, 45, 45, 45),
         )
         self.bg2.image = color.recol(self.bg2.image, (120, 120, 120))
         self.bg2.rect.topleft = (self.sh.per(40) + self.sh.per(3), self.sh.per(3))
@@ -182,8 +189,8 @@ class HealthOverlay(Overlay):
         self.level2_text = None
 
     def load(self):
-        self.mon1 = getattr(scene_manager._current_scene, "monster1")
-        self.mon2 = getattr(scene_manager._current_scene, "monster2")
+        self.mon1 = getattr(scene_manager._current_scene, "m1")
+        self.mon2 = getattr(scene_manager._current_scene, "m2")
 
         if self.name1_text:
             self.components.remove(self.name1_text)
@@ -193,6 +200,15 @@ class HealthOverlay(Overlay):
             self.components.remove(self.name2_text)
         if self.level2_text:
             self.components.remove(self.level2_text)
+
+        if hasattr(self, "type_sprites1"):
+            for ts in self.type_sprites1:
+                if ts in self.components:
+                    self.components.remove(ts)
+        if hasattr(self, "type_sprites2"):
+            for ts in self.type_sprites2:
+                if ts in self.components:
+                    self.components.remove(ts)
 
         self.name1_text = Text(self.mon1["name"], 32, "Azure")
         self.name1_text.rect.topleft = (
@@ -220,20 +236,58 @@ class HealthOverlay(Overlay):
         self.add_passive(self.name2_text)
         self.add_passive(self.level2_text)
 
+        # Type Icons for Combat
+        from src.data.bag import TYPE_MAP
+
+        # Player 1 Types (Top Left)
+        types1 = self.mon1.get("type", [])
+        start_x = self.name1_text.rect.left
+        y_pos = self.name1_text.rect.bottom + 5
+        self.type_sprites1 = []
+        for t_abbr in types1:
+            if not t_abbr:
+                continue
+            t_name = TYPE_MAP.get(t_abbr)
+            if t_name:
+                ts = Sprite(f"type/{t_name}.png", (24, 24))
+                ts.rect.topleft = (start_x, y_pos)
+                start_x += 35
+                self.add_passive(ts)
+                self.type_sprites1.append(ts)  # Keep ref if needed to clear
+
+        # Player 2 Types (Bottom Right)
+        types2 = self.mon2.get("type", [])
+        # Iterate backwards/right-aligned? Or just left aligned below name?
+        # Name is at bottomright relative to bg2
+        # Let's align below name, right aligned?
+        # text.rect.bottomright
+        start_x = self.name2_text.rect.right
+        y_pos = self.name2_text.rect.bottom + 5
+        self.type_sprites2 = []
+        for t_abbr in types2:
+            if not t_abbr:
+                continue
+            t_name = TYPE_MAP.get(t_abbr)
+            if t_name:
+                ts = Sprite(f"type/{t_name}.png", (24, 24))
+                ts.rect.topright = (start_x, y_pos)
+                start_x -= 35
+                self.add_passive(ts)
+                self.type_sprites2.append(ts)
         self.health_ratio()
         self.bar1.load()
         self.bar2.load()
 
     def health_ratio(self):
         """Calculate current health ratios"""
-        self.bar1.health_ratio(getattr(scene_manager._current_scene, "monster1"))
-        self.bar2.health_ratio(getattr(scene_manager._current_scene, "monster2"))
+        self.bar1.health_ratio(getattr(scene_manager._current_scene, "m1"))
+        self.bar2.health_ratio(getattr(scene_manager._current_scene, "m2"))
 
     def health_update(self):
         """Start the health bar animation"""
 
-        self.bar1.health_update(getattr(scene_manager._current_scene, "monster1"))
-        self.bar2.health_update(getattr(scene_manager._current_scene, "monster2"))
+        self.bar1.health_update(getattr(scene_manager._current_scene, "m1"))
+        self.bar2.health_update(getattr(scene_manager._current_scene, "m2"))
 
     def update_content(self, dt: float):
         self.animating = self.bar1.animating or self.bar2.animating
@@ -255,11 +309,16 @@ class SwitchOverlay(Overlay):
         self.clear()
         self.selected = False
         self.forced = forced
-        bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(80)))
+        bg = Sprite(
+            "UI/raw/UI_Flat_Frame03a.png",
+            (sw.per(40), sh.per(80)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
+        bg.image = color.recol(bg.image, (120, 120, 120))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
         b = bg.rect.copy()
         slot_height = b.height // 6
-        self.cur = getattr(scene_manager._current_scene, "current", None)
+        self.cur = getattr(scene_manager._current_scene, "ci1", None)
         monsters = getattr(gh, "gm").bag.monsters.copy()
         monsters.pop(self.cur)
         self.monsters = monsters
@@ -293,11 +352,14 @@ class SwitchOverlay(Overlay):
                     b.top + slot_height * idx,
                     b.width,
                     crd(slot_height).per(90),
+                    nine_grid_margins=(45, 45, 45, 45),
+                )
+                mbg.img_button.image = color.recol(
+                    mbg.img_button.image, (120, 120, 120)
                 )
                 mbg.hitbox.bottom = b.bottom - slot_height * idx
-                dead = pg.Surface((b.width, crd(slot_height).per(90)))
-                dead.fill((255, 0, 0))
-                dead.set_alpha(128)
+                dead = pg.Surface((b.width, crd(slot_height).per(90)), pg.SRCALPHA)
+                dead.fill((255, 0, 0, 128))
                 rect = dead.get_rect()
                 rect.bottomleft = (mbg.hitbox.left, mbg.hitbox.bottom)
                 self.ds.append([dead, rect, idx])
@@ -311,19 +373,37 @@ class SwitchOverlay(Overlay):
                     b.width,
                     crd(slot_height).per(90),
                     lambda idx=monster["idx"]: self.action(idx),
+                    nine_grid_margins=(45, 45, 45, 45),
+                )
+                mbg.img_button_default.image = color.recol(
+                    mbg.img_button_default.image, (120, 120, 120)
+                )
+                mbg.img_button_hover.image = color.recol(
+                    mbg.img_button_hover.image, (120, 120, 120)
                 )
                 mbg.hitbox.bottom = b.bottom - slot_height * idx
+                mbg.hitbox.bottom = b.bottom - slot_height * idx
             self.add_active(mbg)
-            sprite = Sprite(pokedex.data[monster["id"]]["sprite_path"], (96, 96))
-            sprite.rect.center = (
-                mbg.hitbox.right - crd(mbg.hitbox.width).per(15),
-                mbg.hitbox.centery,
+
+            # IconBG
+            icon_bg_size = 96
+            icon_bg = Sprite(
+                "UI/raw/UI_Flat_Frame01a.png",
+                (icon_bg_size, icon_bg_size),
+                nine_grid_margins=(45, 45, 45, 45),
             )
+            icon_bg.image = color.recol(icon_bg.image, (60, 60, 60))
+            icon_bg.rect.left = mbg.hitbox.left + crd(mbg.hitbox.width).per(2)
+            icon_bg.rect.centery = mbg.hitbox.centery
+            self.add_passive(icon_bg)
+
+            sprite = Sprite(pokedex.data[monster["id"]]["sprite_path"], (96, 96))
+            sprite.rect.center = icon_bg.rect.center
             self.add_passive(sprite)
 
             name = Text(monster["name"], 24, "azure")
             name.rect.topleft = (
-                mbg.hitbox.left + crd(mbg.hitbox.width).per(8),
+                icon_bg.rect.right + crd(mbg.hitbox.width).per(2),
                 mbg.hitbox.top + crd(slot_height).per(10),
             )
             self.add_passive(name)
@@ -335,13 +415,13 @@ class SwitchOverlay(Overlay):
             )
             text = Text("HP", 24, "azure")
             text.rect.topleft = (
-                mbg.hitbox.left + crd(mbg.hitbox.width).per(8),
+                icon_bg.rect.right + crd(mbg.hitbox.width).per(2),
                 mbg.hitbox.top + crd(slot_height).per(45),
             )
             self.add_passive(text)
             hp.update_rect(
                 (
-                    text.rect.right + crd(mbg.hitbox.width).per(8),
+                    text.rect.right + crd(mbg.hitbox.width).per(2),
                     mbg.hitbox.top + crd(slot_height).per(45),
                 ),
                 "topleft",
@@ -353,7 +433,7 @@ class SwitchOverlay(Overlay):
 
             level = Text("Level: " + str(monster["level"]), 24, "azure")
             level.rect.topleft = (
-                name.rect.right + crd(mbg.hitbox.width).per(8),
+                name.rect.right + crd(mbg.hitbox.width).per(4),
                 name.rect.top,
             )
             self.add_passive(level)
@@ -407,7 +487,12 @@ class ActionOverlay(Overlay):
         self.is_run = False
         self.first = True
         self.try_run = False
-        bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(15)))
+        bg = Sprite(
+            "UI/raw/UI_Flat_Frame03a.png",
+            (sw.per(40), sh.per(15)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
+        bg.image = color.recol(bg.image, (120, 120, 120))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
         run_button = Button(
             "UI/raw/UI_Flat_Button01a_4.png",
@@ -417,6 +502,13 @@ class ActionOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(0),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        run_button.img_button_default.image = color.recol(
+            run_button.img_button_default.image, (120, 120, 120)
+        )
+        run_button.img_button_hover.image = color.recol(
+            run_button.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(run_button)
         switch_button = Button(
@@ -427,6 +519,13 @@ class ActionOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(1),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        switch_button.img_button_default.image = color.recol(
+            switch_button.img_button_default.image, (120, 120, 120)
+        )
+        switch_button.img_button_hover.image = color.recol(
+            switch_button.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(switch_button)
         fight_button = Button(
@@ -437,6 +536,13 @@ class ActionOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(2),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        fight_button.img_button_default.image = color.recol(
+            fight_button.img_button_default.image, (120, 120, 120)
+        )
+        fight_button.img_button_hover.image = color.recol(
+            fight_button.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(fight_button)
         item_button = Button(
@@ -447,6 +553,13 @@ class ActionOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(3),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        item_button.img_button_default.image = color.recol(
+            item_button.img_button_default.image, (120, 120, 120)
+        )
+        item_button.img_button_hover.image = color.recol(
+            item_button.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(item_button)
         label = Text("Run", 32, "Black")
@@ -486,7 +599,12 @@ class MoveOverlay(Overlay):
         sw = crd(GameSettings.SCREEN_WIDTH)
         sh = crd(GameSettings.SCREEN_HEIGHT)
 
-        bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(15)))
+        bg = Sprite(
+            "UI/raw/UI_Flat_Frame03a.png",
+            (sw.per(40), sh.per(15)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
+        bg.image = color.recol(bg.image, (120, 120, 120))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
 
         back_button = Button(
@@ -508,6 +626,13 @@ class MoveOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(0),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        move1.img_button_default.image = color.recol(
+            move1.img_button_default.image, (120, 120, 120)
+        )
+        move1.img_button_hover.image = color.recol(
+            move1.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(move1)
 
@@ -519,6 +644,13 @@ class MoveOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(1),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        move2.img_button_default.image = color.recol(
+            move2.img_button_default.image, (120, 120, 120)
+        )
+        move2.img_button_hover.image = color.recol(
+            move2.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(move2)
 
@@ -530,6 +662,13 @@ class MoveOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(2),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        move3.img_button_default.image = color.recol(
+            move3.img_button_default.image, (120, 120, 120)
+        )
+        move3.img_button_hover.image = color.recol(
+            move3.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(move3)
 
@@ -541,6 +680,13 @@ class MoveOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(3),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        move4.img_button_default.image = color.recol(
+            move4.img_button_default.image, (120, 120, 120)
+        )
+        move4.img_button_hover.image = color.recol(
+            move4.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(move4)
 
@@ -567,7 +713,9 @@ class MoveOverlay(Overlay):
             self.selected = True
             if hasattr(scene_manager._current_scene, "move"):
                 setattr(scene_manager._current_scene, "move", key)
-                Logger.debug(f"MoveOverlay: Move {key} selected. self.selected set to True.")
+                Logger.debug(
+                    f"MoveOverlay: Move {key} selected. self.selected set to True."
+                )
 
     def inmove(self, moves: list[dict]):
         self.moves = moves
@@ -590,7 +738,12 @@ class ItemOverlay(Overlay):
 
     def init(self):
         self.clear()  # Clear old components before reinitializing
-        bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(80)))
+        bg = Sprite(
+            "UI/raw/UI_Flat_Frame03a.png",
+            (sw.per(40), sh.per(80)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
+        bg.image = color.recol(bg.image, (120, 120, 120))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
         b = bg.rect.copy()
         slot_height = b.height // 6
@@ -621,19 +774,43 @@ class ItemOverlay(Overlay):
                 b.width,
                 crd(slot_height).per(90),
                 lambda idx=idx: self.action(idx),
+                nine_grid_margins=(45, 45, 45, 45),
+            )
+            mbg.img_button_default.image = color.recol(
+                mbg.img_button_default.image, (120, 120, 120)
+            )
+            mbg.img_button_hover.image = color.recol(
+                mbg.img_button_hover.image, (120, 120, 120)
             )
             mbg.hitbox.bottom = b.bottom - slot_height * idx
+            mbg.hitbox.bottom = b.bottom - slot_height * idx
             self.add_active(mbg)
-            sprite = Sprite(item["sprite_path"], (64, 64))
-            sprite.rect.center = (
-                mbg.hitbox.right - crd(mbg.hitbox.width).per(15),
-                mbg.hitbox.centery,
+            # Fallback for missing sprite_path
+            from src.data.pokedex import PokeItems
+
+            static_data = PokeItems.items.get(item["name"], {})
+            sprite_path = item.get("sprite_path") or static_data.get(
+                "sprite_path", "ingame_ui/potion.png"
             )
+
+            icon_bg_size = 64
+            icon_bg = Sprite(
+                "UI/raw/UI_Flat_Frame01a.png",
+                (icon_bg_size, icon_bg_size),
+                nine_grid_margins=(45, 45, 45, 45),
+            )
+            icon_bg.image = color.recol(icon_bg.image, (60, 60, 60))
+            icon_bg.rect.left = mbg.hitbox.left + crd(mbg.hitbox.width).per(5)
+            icon_bg.rect.centery = mbg.hitbox.centery
+            self.add_passive(icon_bg)
+
+            sprite = Sprite(sprite_path, (64, 64))
+            sprite.rect.center = icon_bg.rect.center
             self.add_passive(sprite)
 
             name = Text(item["name"], 24, "azure")
             name.rect.topleft = (
-                mbg.hitbox.left + crd(mbg.hitbox.width).per(8),
+                icon_bg.rect.right + crd(mbg.hitbox.width).per(5),
                 mbg.hitbox.top + crd(slot_height).per(10),
             )
             self.add_passive(name)
@@ -648,21 +825,21 @@ class ItemOverlay(Overlay):
     def action(self, idx):
         items = getattr(gh, "gm").bag._items_data
         item = items[idx]
-        
+
         # Check if item is available
         if item["count"] <= 0:
             return
-        
+
         # Store the selected item
         self.selected_item = item.copy()  # Copy to avoid reference issues
         self.selected = True
-        
+
         # Decrease count
         item["count"] -= 1
-        
+
         # Save the bag to persist the count change
         getattr(gh, "gm").bag.update_bag()
-        
+
         # Set catching flag if pokeball
         if item["name"].lower() == "pokeball":
             setattr(scene_manager._current_scene, "catching", True)

@@ -55,6 +55,9 @@ class Player(Entity):
             (GameSettings.TILE_SIZE // 2, GameSettings.TILE_SIZE // 2),
         )
         self.path: list[Position] = []
+        # Initialize camera position centered on player initially or at 0,0
+        # Check boundaries immediately if possible, but safe default is ok
+        self.camera_pos = Position(x, y)
 
     def set_path(self, path: list[Position]) -> None:
         """Set path."""
@@ -101,6 +104,18 @@ class Player(Entity):
         if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
             dis.y += 1
             self.path = []
+
+        # Controller Input (Left Joystick)
+        if dis.x == 0 and dis.y == 0:
+            axis_x = input_manager.get_axis(0)
+            axis_y = input_manager.get_axis(1)
+
+            if abs(axis_x) > 0.2:
+                dis.x = axis_x
+                self.path = []
+            if abs(axis_y) > 0.2:
+                dis.y = axis_y
+                self.path = []
         if (
             not (dis.x != 0 or dis.y != 0)
             and self.path
@@ -117,12 +132,26 @@ class Player(Entity):
                 self.path.pop(0)
                 self.position.x = target_pos.x
                 self.position.y = target_pos.y
-            elif abs(diff_x) > abs(diff_y):
-                dis.x = 1 if diff_x > 0 else -1
-                self.position.y = target_pos.y
             else:
-                dis.y = 1 if diff_y > 0 else -1
-                self.position.x = target_pos.x
+                # Corner-safe movement: Prioritize alignment
+                ALIGN_THRESHOLD = 2.0
+
+                if abs(diff_x) > abs(diff_y):
+                    # Trying to move horizontally
+                    if abs(diff_y) > ALIGN_THRESHOLD:
+                        dis.x = 0  # STOP forward movement
+                        dis.y = diff_y  # CORRECT vertical alignment first
+                    else:
+                        dis.x = diff_x
+                        dis.y = diff_y
+                else:
+                    # Trying to move vertically
+                    if abs(diff_x) > ALIGN_THRESHOLD:
+                        dis.y = 0  # STOP forward movement
+                        dis.x = diff_x  # CORRECT horizontal alignment first
+                    else:
+                        dis.x = diff_x
+                        dis.y = diff_y
         norm = math.sqrt(dis.x**2 + dis.y**2)
         if norm != 0:
             dis.x /= norm
@@ -131,19 +160,47 @@ class Player(Entity):
         dis.y *= self.speed * dt
         if dis.x != 0 or dis.y != 0:
             self.is_moving = True
-            if abs(dis.y) > abs(dis.x):
-                if dis.y < 0:
-                    self.direction = Direction.UP
-                    self.animation.switch("up")
+
+            # Determine facing direction
+            # If auto-navigating, use the target difference (diff) to avoid twitching during alignment slides
+            if self.path:
+                target_tile = self.path[0]
+                target_pos = Position(
+                    target_tile.x * GameSettings.TILE_SIZE,
+                    target_tile.y * GameSettings.TILE_SIZE,
+                )
+                dx = target_pos.x - self.position.x
+                dy = target_pos.y - self.position.y
+
+                if abs(dx) > abs(dy):
+                    if dx < 0:
+                        self.direction = Direction.LEFT
+                        self.animation.switch("left")
+                    else:
+                        self.direction = Direction.RIGHT
+                        self.animation.switch("right")
                 else:
-                    self.direction = Direction.DOWN
-                    self.animation.switch("down")
-            elif dis.x < 0:
-                self.direction = Direction.LEFT
-                self.animation.switch("left")
+                    if dy < 0:
+                        self.direction = Direction.UP
+                        self.animation.switch("up")
+                    else:
+                        self.direction = Direction.DOWN
+                        self.animation.switch("down")
             else:
-                self.direction = Direction.RIGHT
-                self.animation.switch("right")
+                # Manual movement: use velocity vector
+                if abs(dis.y) > abs(dis.x):
+                    if dis.y < 0:
+                        self.direction = Direction.UP
+                        self.animation.switch("up")
+                    else:
+                        self.direction = Direction.DOWN
+                        self.animation.switch("down")
+                elif dis.x < 0:
+                    self.direction = Direction.LEFT
+                    self.animation.switch("left")
+                else:
+                    self.direction = Direction.RIGHT
+                    self.animation.switch("right")
         else:
             self.is_stop = True
         if self.is_stop:
@@ -175,17 +232,12 @@ class Player(Entity):
             self.tp_cooldown -= dt
         elif self.tp_cooldown <= 0:
             self.animation.update_pos(self.position)
-            warp = self.game_manager.current_map.check_warp(self.animation.rect)
-            if warp:
-                self.game_manager.warp(warp)
-                self.tp_cooldown = 0.5
-            else:
-                tp = self.game_manager.current_map.check_teleport(self.animation.rect)
-                if tp:
-                    dest = tp.destination
-                    if dest != self.game_manager.current_map_key:
-                        self.game_manager.switch_map(dest)
-                        self.tp_cooldown = 0.5
+            tp = self.game_manager.current_map.check_teleport(self.animation.rect)
+            if tp:
+                dest = tp.destination
+                if dest != self.game_manager.current_map_key:
+                    self.game_manager.switch_map(dest, tp.to_pos)
+                    self.tp_cooldown = 0.5
         self.warning_sign.update_pos(
             Position(self.animation.rect.left + 16, self.animation.rect.top - 30)
         )
@@ -197,7 +249,38 @@ class Player(Entity):
                 self.bush_cd = 2
         else:
             self.bush_dt = False
+
+        # Smooth Camera Logic
+        if self.game_manager.current_map:
+            map_width = (
+                self.game_manager.current_map.tmxdata.width * GameSettings.TILE_SIZE
+            )
+            map_height = (
+                self.game_manager.current_map.tmxdata.height * GameSettings.TILE_SIZE
+            )
+            screen_width = GameSettings.SCREEN_WIDTH
+            screen_height = GameSettings.SCREEN_HEIGHT
+
+            # Calculate target position (centered on player)
+            target_x = self.position.x - screen_width // 2
+            target_y = self.position.y - screen_height // 2
+
+            # Clamp to map boundaries
+            target_x = max(0, min(target_x, map_width - screen_width))
+            target_y = max(0, min(target_y, map_height - screen_height))
+
+            # Lerp towards target
+            lerp_speed = 5.0
+            self.camera_pos.x += (target_x - self.camera_pos.x) * lerp_speed * dt
+            self.camera_pos.y += (target_y - self.camera_pos.y) * lerp_speed * dt
+
         super().update(dt)
+
+    @property
+    @override
+    def camera(self) -> PositionCamera:
+        """Get the smoothed camera position."""
+        return PositionCamera(int(self.camera_pos.x), int(self.camera_pos.y))
 
     @override
     def draw(self, screen: pg.Surface, camera: PositionCamera) -> None:
@@ -205,6 +288,23 @@ class Player(Entity):
         super().draw(screen, camera)
         if self.bush_dt:
             self.warning_sign.draw(screen, camera)
+
+        # Draw breadcrumbs for auto-navigation path
+        if self.path:
+            for tile_pos in self.path:
+                # Calculate world position (center of tile)
+                world_x = (
+                    tile_pos.x * GameSettings.TILE_SIZE + GameSettings.TILE_SIZE // 2
+                )
+                world_y = (
+                    tile_pos.y * GameSettings.TILE_SIZE + GameSettings.TILE_SIZE // 2
+                )
+
+                # Transform to screen coordinates
+                screen_pos = camera.transform_position(Position(world_x, world_y))
+
+                # Draw the breadcrumb (small circle)
+                pg.draw.circle(screen, (0, 191, 255), screen_pos, 4)  # Deep Sky Blue
 
     @override
     def to_dict(self) -> dict[str, object]:
@@ -231,9 +331,9 @@ class Bush:
     def interact(self):
         """Interact."""
         if not self.monsters:
-            self.monsters = generate_party(40, 1)
+            self.monsters = generate_party(gh.gm.player_level, 1)
             scene_manager.change_scene("encounter")
         else:
             self.monsters.clear()
-            self.monsters = generate_party(40, 1)
+            self.monsters = generate_party(gh.gm.player_level, 1)
             scene_manager.change_scene("encounter")

@@ -1,0 +1,1545 @@
+{
+  "items": {
+    "Potion": {
+      "sprite_path": "medicine/potion.png",
+      "healing": 20,
+      "price": 200
+    },
+    "Super Potion": {
+      "sprite_path": "medicine/super-potion.png",
+      "healing": 50,
+      "price": 500
+    },
+    "Hyper Potion": {
+      "sprite_path": "medicine/hyper-potion.png",
+      "healing": 100,
+      "price": 1200
+    },
+    "PP Potion": {
+      "sprite_path": "medicine/potion.png",
+      "pp_restore": 10,
+      "price": 500
+    },
+    "SP Potion": {
+      "sprite_path": "medicine/potion.png",
+      "sp_restore": 50,
+      "price": 500
+    },
+    "Revive": {
+      "sprite_path": "medicine/revive.png",
+      "revive": true,
+      "healing": 10,
+      "price": 1500
+    },
+    "Full Heal": {
+      "sprite_path": "medicine/full-heal.png",
+      "healing": 200,
+      "price": 300
+    },
+    "Max Reive": {
+      "sprite_path": "medicine/max-revive.png",
+      "revive": true,
+      "healing": 200,
+      "price": 2000
+    },
+    "Coins": {
+      "sprite_path": "ingame_ui/coin.png",
+      "price": 1
+    },
+    "Pokeball": {
+      "sprite_path": "ball/poke.png",
+      "price": 200,
+      "catch_rate": 1.0
+    },
+    "Great Ball": {
+      "sprite_path": "ball/great.png",
+      "price": 600,
+      "catch_rate": 1.5
+    },
+    "Ultra Ball": {
+      "sprite_path": "ball/ultra.png",
+      "price": 1200,
+      "catch_rate": 2.0
+    },
+    "Master Ball": {
+      "sprite_path": "ball/master.png",
+      "price": 100000,
+      "catch_rate": 255.0
+    },
+    "Beast Ball": {
+      "sprite_path": "ball/beast.png",
+      "price": 1000,
+      "catch_rate": 0.1
+    },
+    "Cherish Ball": {
+      "sprite_path": "ball/cherish.png",
+      "price": 1000,
+      "catch_rate": 1.0
+    },
+    "Dive Ball": {
+      "sprite_path": "ball/dive.png",
+      "price": 1000,
+      "catch_rate": 3.5
+    },
+    "Dream Ball": {
+      "sprite_path": "ball/dream.png",
+      "price": 1000,
+      "catch_rate": 1.0
+    },
+    "Dusk Ball": {
+      "sprite_path": "ball/dusk.png",
+      "price": 1000,
+      "catch_rate": 3.5
+    },
+    "Fast Ball": {
+      "sprite_path": "ball/fast.png",
+      "price": 1000,
+      "catch_rate": 4.0
+    },
+    "Friend Ball": {
+      "sprite_path": "ball/friend.png",
+      "price": 1000,
+      "catch_rate": 1.0
+    },
+    "Heal Ball": {
+      "sprite_path": "ball/heal.png",
+      "price": 300,
+      "catch_rate": 1.0
+    },
+    "Heavy Ball": {
+      "sprite_path": "ball/heavy.png",
+      "price": 1000,
+      "catch_rate": 1.0
+    },
+    "Level Ball": {
+      "sprite_path": "ball/level.png",
+      "price": 1000,
+      "catch_rate": 1.0
+    },
+    "Love Ball": {
+      "sprite_path": "ball/love.png",
+      "price": 1000,
+      "catch_rate": 8.0
+    },
+    "Lure Ball": {
+      "sprite_path": "ball/lure.png",
+      "price": 1000,
+      "catch_rate": 3.0
+    },
+    "Luxury Ball": {
+      "sprite_path": "ball/luxury.png",
+      "price": 1000,
+      "catch_rate": 1.0
+    },
+    "Moon Ball": {
+      "sprite_path": "ball/moon.png",
+      "price": 1000,
+      "catch_rate": 4.0
+    },
+    "Nest Ball": {
+      "sprite_path": "ball/nest.png",
+      "price": 1000,
+      "catch_rate": 1.0
+    },
+    "Net Ball": {
+      "sprite_path": "ball/net.png",
+      "price": 1000,
+      "catch_rate": 3.5
+    },
+    "Park Ball": {
+      "sprite_path": "ball/park.png",
+      "price": 0,
+      "catch_rate": 255.0
+    },
+    "Premier Ball": {
+      "sprite_path": "ball/premier.png",
+      "price": 200,
+      "catch_rate": 1.0
+    },
+    "Quick Ball": {
+      "sprite_path": "ball/quick.png",
+      "price": 1000,
+      "catch_rate": 5.0
+    },
+    "Repeat Ball": {
+      "sprite_path": "ball/repeat.png",
+      "price": 1000,
+      "catch_rate": 3.5
+    },
+    "Safari Ball": {
+      "sprite_path": "ball/safari.png",
+      "price": 0,
+      "catch_rate": 1.5
+    },
+    "Sport Ball": {
+      "sprite_path": "ball/sport.png",
+      "price": 1000,
+      "catch_rate": 1.5
+    },
+    "Timer Ball": {
+      "sprite_path": "ball/timer.png",
+      "price": 1000,
+      "catch_rate": 1.0
+    },
+    "X Attack": {
+      "sprite_path": "ingame_ui/potion.png",
+      "stat_boost": "atk",
+      "boost_amount": 2,
+      "price": 1000
+    },
+    "X Defense": {
+      "count": 2,
+      "sprite_path": "ingame_ui/potion.png",
+      "stat_boost": "def",
+      "boost_amount": 2,
+      "price": 1000
+    },
+    "X Sp. Atk": {
+      "sprite_path": "ingame_ui/potion.png",
+      "stat_boost": "spa",
+      "boost_amount": 2,
+      "price": 1000
+    },
+    "X Sp. Def": {
+      "sprite_path": "ingame_ui/potion.png",
+      "stat_boost": "spd",
+      "boost_amount": 2,
+      "price": 1000
+    },
+    "X Speed": {
+      "sprite_path": "ingame_ui/potion.png",
+      "stat_boost": "spe",
+      "boost_amount": 2,
+      "price": 1000
+    },
+    "Evolution Stone": {
+      "sprite_path": "ingame_ui/ball.png",
+      "price": 3000,
+      "is_evolution_stone": true
+    }
+  },
+  "moves": {
+    "Quick Attack": {
+      "type": "nor",
+      "cat": "Normal Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 30
+    },
+    "Tackle": {
+      "type": "nor",
+      "cat": "Normal Attack",
+      "power": 35,
+      "acc": 100,
+      "pp": 35
+    },
+    "Scratch": {
+      "type": "nor",
+      "cat": "Normal Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 35
+    },
+    "lick": {
+      "type": "nor",
+      "cat": "Normal Attack",
+      "power": 30,
+      "acc": 100,
+      "pp": 30
+    },
+    "Ember": {
+      "type": "fir",
+      "cat": "Special Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 25
+    },
+    "Hydropun": {
+      "type": "wtr",
+      "cat": "Special Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 25
+    },
+    "Water Gun": {
+      "type": "wtr",
+      "cat": "Special Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 25
+    },
+    "Ice Beam": {
+      "type": "ice",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Peck": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 35,
+      "acc": 100,
+      "pp": 35
+    },
+    "Bite": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 25
+    },
+    "fly": {
+      "type": "fly",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 15
+    },
+    "Vine Attack": {
+      "type": "gra",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "Solar Beam": {
+      "type": "gra",
+      "cat": "Special Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 5
+    },
+    "Razor Leaf": {
+      "type": "gra",
+      "cat": "Physical Attack",
+      "power": 55,
+      "acc": 95,
+      "pp": 25
+    },
+    "Flamethrower": {
+      "type": "fir",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 15
+    },
+    "Earthquake": {
+      "type": "gro",
+      "cat": "Physical Attack",
+      "power": 100,
+      "acc": 100,
+      "pp": 10
+    },
+    "Mo Attack": {
+      "type": "dra",
+      "power": 2000,
+      "acc": 50,
+      "pp": 5
+    },
+    "Thunder Shock": {
+      "type": "ele",
+      "cat": "Special Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 30
+    },
+    "Thunderbolt": {
+      "type": "ele",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 15
+    },
+    "Psychic": {
+      "type": "psy",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Confusion": {
+      "type": "psy",
+      "cat": "Special Attack",
+      "power": 50,
+      "acc": 100,
+      "pp": 25
+    },
+    "Karate Chop": {
+      "type": "fig",
+      "cat": "Physical Attack",
+      "power": 50,
+      "acc": 100,
+      "pp": 25
+    },
+    "Low Kick": {
+      "type": "fig",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "Poison Sting": {
+      "type": "poi",
+      "cat": "Physical Attack",
+      "power": 15,
+      "acc": 100,
+      "pp": 35
+    },
+    "Sludge Bomb": {
+      "type": "poi",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Rock Throw": {
+      "type": "roc",
+      "cat": "Physical Attack",
+      "power": 50,
+      "acc": 90,
+      "pp": 15
+    },
+    "Rock Slide": {
+      "type": "roc",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 90,
+      "pp": 10
+    },
+    "Shadow Ball": {
+      "type": "gho",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Night Shade": {
+      "type": "gho",
+      "cat": "Special Attack",
+      "power": 50,
+      "acc": 100,
+      "pp": 15
+    },
+    "Crunch": {
+      "type": "dar",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Dark Pulse": {
+      "type": "dar",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Iron Tail": {
+      "type": "ste",
+      "cat": "Physical Attack",
+      "power": 100,
+      "acc": 75,
+      "pp": 15
+    },
+    "Metal Claw": {
+      "type": "ste",
+      "cat": "Physical Attack",
+      "power": 50,
+      "acc": 95,
+      "pp": 35
+    },
+    "Moonblast": {
+      "type": "fai",
+      "cat": "Special Attack",
+      "power": 95,
+      "acc": 100,
+      "pp": 15
+    },
+    "Dazzling Gleam": {
+      "type": "fai",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 10
+    },
+    "Bug Bite": {
+      "type": "bug",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "X-Scissor": {
+      "type": "bug",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Dragon Breath": {
+      "type": "dra",
+      "cat": "Special Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "Dragon Claw": {
+      "type": "dra",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Blizzard": {
+      "type": "ice",
+      "cat": "Special Attack",
+      "power": 110,
+      "acc": 70,
+      "pp": 5
+    },
+    "Mud Shot": {
+      "type": "gro",
+      "cat": "Special Attack",
+      "power": 55,
+      "acc": 95,
+      "pp": 15
+    },
+    "Wing Attack": {
+      "type": "fly",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 35
+    },
+    "Air Slash": {
+      "type": "fly",
+      "cat": "Special Attack",
+      "power": 75,
+      "acc": 95,
+      "pp": 15
+    },
+    "Hyper Beam": {
+      "type": "nor",
+      "cat": "Special Attack",
+      "power": 150,
+      "acc": 90,
+      "pp": 5
+    },
+    "Giga Impact": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 150,
+      "acc": 90,
+      "pp": 5
+    },
+    "Body Slam": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 85,
+      "acc": 100,
+      "pp": 15
+    },
+    "Slam": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 75,
+      "pp": 20
+    },
+    "Pound": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 35
+    },
+    "Mega Punch": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 85,
+      "pp": 20
+    },
+    "Mega Kick": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 75,
+      "pp": 5
+    },
+    "Swift": {
+      "type": "nor",
+      "cat": "Special Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "Headbutt": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 15
+    },
+    "Double Edge": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 15
+    },
+    "Take Down": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 85,
+      "pp": 20
+    },
+    "Fire Blast": {
+      "type": "fir",
+      "cat": "Special Attack",
+      "power": 110,
+      "acc": 85,
+      "pp": 5
+    },
+    "Fire Punch": {
+      "type": "fir",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 100,
+      "pp": 15
+    },
+    "Flame Wheel": {
+      "type": "fir",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 25
+    },
+    "Heat Wave": {
+      "type": "fir",
+      "cat": "Special Attack",
+      "power": 95,
+      "acc": 90,
+      "pp": 10
+    },
+    "Inferno": {
+      "type": "fir",
+      "cat": "Special Attack",
+      "power": 100,
+      "acc": 50,
+      "pp": 5
+    },
+    "Surf": {
+      "type": "wat",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 15
+    },
+    "Hydro Pump": {
+      "type": "wat",
+      "cat": "Special Attack",
+      "power": 110,
+      "acc": 80,
+      "pp": 5
+    },
+    "Aqua Tail": {
+      "type": "wat",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 90,
+      "pp": 10
+    },
+    "Bubble Beam": {
+      "type": "wat",
+      "cat": "Special Attack",
+      "power": 65,
+      "acc": 100,
+      "pp": 20
+    },
+    "Waterfall": {
+      "type": "wat",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Thunder": {
+      "type": "ele",
+      "cat": "Special Attack",
+      "power": 110,
+      "acc": 70,
+      "pp": 10
+    },
+    "Thunder Punch": {
+      "type": "ele",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 100,
+      "pp": 15
+    },
+    "Spark": {
+      "type": "ele",
+      "cat": "Physical Attack",
+      "power": 65,
+      "acc": 100,
+      "pp": 20
+    },
+    "Volt Tackle": {
+      "type": "ele",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 15
+    },
+    "Wild Charge": {
+      "type": "ele",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 15
+    },
+    "Leaf Blade": {
+      "type": "gra",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 15
+    },
+    "Energy Ball": {
+      "type": "gra",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Seed Bomb": {
+      "type": "gra",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Petal Dance": {
+      "type": "gra",
+      "cat": "Special Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 10
+    },
+    "Giga Drain": {
+      "type": "gra",
+      "cat": "Special Attack",
+      "power": 75,
+      "acc": 100,
+      "pp": 10
+    },
+    "Ice Punch": {
+      "type": "ice",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 100,
+      "pp": 15
+    },
+    "Icy Wind": {
+      "type": "ice",
+      "cat": "Special Attack",
+      "power": 55,
+      "acc": 95,
+      "pp": 15
+    },
+    "Avalanche": {
+      "type": "ice",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 10
+    },
+    "Frost Breath": {
+      "type": "ice",
+      "cat": "Special Attack",
+      "power": 60,
+      "acc": 90,
+      "pp": 10
+    },
+    "Close Combat": {
+      "type": "fig",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 5
+    },
+    "Cross Chop": {
+      "type": "fig",
+      "cat": "Physical Attack",
+      "power": 100,
+      "acc": 80,
+      "pp": 5
+    },
+    "Brick Break": {
+      "type": "fig",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 100,
+      "pp": 15
+    },
+    "Aura Sphere": {
+      "type": "fig",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 20
+    },
+    "Focus Blast": {
+      "type": "fig",
+      "cat": "Special Attack",
+      "power": 120,
+      "acc": 70,
+      "pp": 5
+    },
+    "Toxic": {
+      "type": "poi",
+      "cat": "Status",
+      "power": 0,
+      "acc": 90,
+      "pp": 10
+    },
+    "Acid": {
+      "type": "poi",
+      "cat": "Special Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 30
+    },
+    "Venoshock": {
+      "type": "poi",
+      "cat": "Special Attack",
+      "power": 65,
+      "acc": 100,
+      "pp": 10
+    },
+    "Gunk Shot": {
+      "type": "poi",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 80,
+      "pp": 5
+    },
+    "Dig": {
+      "type": "gro",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 10
+    },
+    "Earth Power": {
+      "type": "gro",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Bulldoze": {
+      "type": "gro",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "Drill Run": {
+      "type": "gro",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 95,
+      "pp": 10
+    },
+    "Aerial Ace": {
+      "type": "fly",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "Brave Bird": {
+      "type": "fly",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 15
+    },
+    "Sky Attack": {
+      "type": "fly",
+      "cat": "Physical Attack",
+      "power": 140,
+      "acc": 90,
+      "pp": 5
+    },
+    "Hurricane": {
+      "type": "fly",
+      "cat": "Special Attack",
+      "power": 110,
+      "acc": 70,
+      "pp": 10
+    },
+    "Psybeam": {
+      "type": "psy",
+      "cat": "Special Attack",
+      "power": 65,
+      "acc": 100,
+      "pp": 20
+    },
+    "Psyshock": {
+      "type": "psy",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 10
+    },
+    "Zen Headbutt": {
+      "type": "psy",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 90,
+      "pp": 15
+    },
+    "Future Sight": {
+      "type": "psy",
+      "cat": "Special Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 10
+    },
+    "Signal Beam": {
+      "type": "bug",
+      "cat": "Special Attack",
+      "power": 75,
+      "acc": 100,
+      "pp": 15
+    },
+    "Megahorn": {
+      "type": "bug",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 85,
+      "pp": 10
+    },
+    "U-turn": {
+      "type": "bug",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 20
+    },
+    "Leech Life": {
+      "type": "bug",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 10
+    },
+    "Stone Edge": {
+      "type": "roc",
+      "cat": "Physical Attack",
+      "power": 100,
+      "acc": 80,
+      "pp": 5
+    },
+    "Power Gem": {
+      "type": "roc",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 20
+    },
+    "Ancient Power": {
+      "type": "roc",
+      "cat": "Special Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 5
+    },
+    "Head Smash": {
+      "type": "roc",
+      "cat": "Physical Attack",
+      "power": 150,
+      "acc": 80,
+      "pp": 5
+    },
+    "Hex": {
+      "type": "gho",
+      "cat": "Special Attack",
+      "power": 65,
+      "acc": 100,
+      "pp": 10
+    },
+    "Phantom Force": {
+      "type": "gho",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Shadow Claw": {
+      "type": "gho",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 15
+    },
+    "Outrage": {
+      "type": "dra",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 10
+    },
+    "Draco Meteor": {
+      "type": "dra",
+      "cat": "Special Attack",
+      "power": 130,
+      "acc": 90,
+      "pp": 5
+    },
+    "Dragon Pulse": {
+      "type": "dra",
+      "cat": "Special Attack",
+      "power": 85,
+      "acc": 100,
+      "pp": 10
+    },
+    "Dragon Rush": {
+      "type": "dra",
+      "cat": "Physical Attack",
+      "power": 100,
+      "acc": 75,
+      "pp": 10
+    },
+    "Foul Play": {
+      "type": "dar",
+      "cat": "Physical Attack",
+      "power": 95,
+      "acc": 100,
+      "pp": 15
+    },
+    "Sucker Punch": {
+      "type": "dar",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 5
+    },
+    "Night Slash": {
+      "type": "dar",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 15
+    },
+    "Knock Off": {
+      "type": "dar",
+      "cat": "Physical Attack",
+      "power": 65,
+      "acc": 100,
+      "pp": 20
+    },
+    "Flash Cannon": {
+      "type": "ste",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 10
+    },
+    "Meteor Mash": {
+      "type": "ste",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 90,
+      "pp": 10
+    },
+    "Steel Wing": {
+      "type": "ste",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 90,
+      "pp": 25
+    },
+    "Bullet Punch": {
+      "type": "ste",
+      "cat": "Physical Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 30
+    },
+    "Play Rough": {
+      "type": "fai",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 90,
+      "pp": 10
+    },
+    "Draining Kiss": {
+      "type": "fai",
+      "cat": "Special Attack",
+      "power": 50,
+      "acc": 100,
+      "pp": 10
+    },
+    "Fairy Wind": {
+      "type": "fai",
+      "cat": "Special Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 30
+    },
+    "Self Destruct": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 200,
+      "acc": 100,
+      "pp": 5
+    },
+    "Explosion": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 250,
+      "acc": 100,
+      "pp": 5
+    },
+    "Facade": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 20
+    },
+    "Return": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 102,
+      "acc": 100,
+      "pp": 20
+    },
+    "Frustration": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 102,
+      "acc": 100,
+      "pp": 20
+    },
+    "Crush Claw": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 95,
+      "pp": 10
+    },
+    "Slash": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 20
+    },
+    "Fury Attack": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 15,
+      "acc": 85,
+      "pp": 20
+    },
+    "Horn Attack": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 65,
+      "acc": 100,
+      "pp": 25
+    },
+    "Stomp": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 65,
+      "acc": 100,
+      "pp": 20
+    },
+    "Wrap": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 15,
+      "acc": 90,
+      "pp": 20
+    },
+    "Bind": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 15,
+      "acc": 85,
+      "pp": 20
+    },
+    "Tri Attack": {
+      "type": "nor",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 10
+    },
+    "Echoed Voice": {
+      "type": "nor",
+      "cat": "Special Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 15
+    },
+    "Uproar": {
+      "type": "nor",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Round": {
+      "type": "nor",
+      "cat": "Special Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 15
+    },
+    "Boomburst": {
+      "type": "nor",
+      "cat": "Special Attack",
+      "power": 140,
+      "acc": 100,
+      "pp": 10
+    },
+    "Extreme Speed": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 5
+    },
+    "Fake Out": {
+      "type": "nor",
+      "cat": "Physical Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 10
+    },
+    "Flare Blitz": {
+      "type": "fir",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 15
+    },
+    "Blaze Kick": {
+      "type": "fir",
+      "cat": "Physical Attack",
+      "power": 85,
+      "acc": 90,
+      "pp": 10
+    },
+    "Fire Fang": {
+      "type": "fir",
+      "cat": "Physical Attack",
+      "power": 65,
+      "acc": 95,
+      "pp": 15
+    },
+    "Lava Plume": {
+      "type": "fir",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Aqua Jet": {
+      "type": "wat",
+      "cat": "Physical Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 20
+    },
+    "Scald": {
+      "type": "wat",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Crabhammer": {
+      "type": "wat",
+      "cat": "Physical Attack",
+      "power": 100,
+      "acc": 90,
+      "pp": 10
+    },
+    "Razor Shell": {
+      "type": "wat",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 95,
+      "pp": 10
+    },
+    "Discharge": {
+      "type": "ele",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Electro Ball": {
+      "type": "ele",
+      "cat": "Special Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 10
+    },
+    "Zap Cannon": {
+      "type": "ele",
+      "cat": "Special Attack",
+      "power": 120,
+      "acc": 50,
+      "pp": 5
+    },
+    "Thunder Fang": {
+      "type": "ele",
+      "cat": "Physical Attack",
+      "power": 65,
+      "acc": 95,
+      "pp": 15
+    },
+    "Wood Hammer": {
+      "type": "gra",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 100,
+      "pp": 15
+    },
+    "Power Whip": {
+      "type": "gra",
+      "cat": "Physical Attack",
+      "power": 120,
+      "acc": 85,
+      "pp": 10
+    },
+    "Magical Leaf": {
+      "type": "gra",
+      "cat": "Special Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "Leaf Storm": {
+      "type": "gra",
+      "cat": "Special Attack",
+      "power": 130,
+      "acc": 90,
+      "pp": 5
+    },
+    "Ice Fang": {
+      "type": "ice",
+      "cat": "Physical Attack",
+      "power": 65,
+      "acc": 95,
+      "pp": 15
+    },
+    "Icicle Crash": {
+      "type": "ice",
+      "cat": "Physical Attack",
+      "power": 85,
+      "acc": 90,
+      "pp": 10
+    },
+    "Freeze Dry": {
+      "type": "ice",
+      "cat": "Special Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 20
+    },
+    "High Jump Kick": {
+      "type": "fig",
+      "cat": "Physical Attack",
+      "power": 130,
+      "acc": 90,
+      "pp": 10
+    },
+    "Mach Punch": {
+      "type": "fig",
+      "cat": "Physical Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 30
+    },
+    "Hammer Arm": {
+      "type": "fig",
+      "cat": "Physical Attack",
+      "power": 100,
+      "acc": 90,
+      "pp": 10
+    },
+    "Cross Poison": {
+      "type": "poi",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 20
+    },
+    "Poison Jab": {
+      "type": "poi",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 20
+    },
+    "Sludge Wave": {
+      "type": "poi",
+      "cat": "Special Attack",
+      "power": 95,
+      "acc": 100,
+      "pp": 10
+    },
+    "High Horsepower": {
+      "type": "gro",
+      "cat": "Physical Attack",
+      "power": 95,
+      "acc": 95,
+      "pp": 10
+    },
+    "Stomping Tantrum": {
+      "type": "gro",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 100,
+      "pp": 10
+    },
+    "Acrobatics": {
+      "type": "fly",
+      "cat": "Physical Attack",
+      "power": 55,
+      "acc": 100,
+      "pp": 15
+    },
+    "Bounce": {
+      "type": "fly",
+      "cat": "Physical Attack",
+      "power": 85,
+      "acc": 85,
+      "pp": 5
+    },
+    "Extrasensory": {
+      "type": "psy",
+      "cat": "Special Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 20
+    },
+    "Psycho Cut": {
+      "type": "psy",
+      "cat": "Physical Attack",
+      "power": 70,
+      "acc": 100,
+      "pp": 20
+    },
+    "Lunge": {
+      "type": "bug",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "First Impression": {
+      "type": "bug",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Smack Down": {
+      "type": "roc",
+      "cat": "Physical Attack",
+      "power": 50,
+      "acc": 100,
+      "pp": 15
+    },
+    "Accelerock": {
+      "type": "roc",
+      "cat": "Physical Attack",
+      "power": 40,
+      "acc": 100,
+      "pp": 20
+    },
+    "Spirit Shackle": {
+      "type": "gho",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 10
+    },
+    "Spectral Thief": {
+      "type": "gho",
+      "cat": "Physical Attack",
+      "power": 90,
+      "acc": 100,
+      "pp": 10
+    },
+    "Scale Shot": {
+      "type": "dra",
+      "cat": "Physical Attack",
+      "power": 25,
+      "acc": 90,
+      "pp": 20
+    },
+    "Dragon Darts": {
+      "type": "dra",
+      "cat": "Physical Attack",
+      "power": 50,
+      "acc": 100,
+      "pp": 10
+    },
+    "Brutal Swing": {
+      "type": "dar",
+      "cat": "Physical Attack",
+      "power": 60,
+      "acc": 100,
+      "pp": 20
+    },
+    "Throat Chop": {
+      "type": "dar",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 15
+    },
+    "Heavy Slam": {
+      "type": "ste",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 10
+    },
+    "Anchor Shot": {
+      "type": "ste",
+      "cat": "Physical Attack",
+      "power": 80,
+      "acc": 100,
+      "pp": 20
+    },
+    "Spirit Break": {
+      "type": "fai",
+      "cat": "Physical Attack",
+      "power": 75,
+      "acc": 100,
+      "pp": 15
+    },
+    "Strange Steam": {
+      "type": "fai",
+      "cat": "Special Attack",
+      "power": 90,
+      "acc": 95,
+      "pp": 10
+    }
+  }
+}

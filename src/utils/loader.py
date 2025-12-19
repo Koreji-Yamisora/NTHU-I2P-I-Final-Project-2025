@@ -2,39 +2,42 @@ import pygame as pg
 from pytmx import load_pygame, TiledMap
 from pathlib import Path
 from .logger import Logger
-ASSETS_DIR = Path('assets')
+
+ASSETS_DIR = Path("assets")
 
 
-def load_img(path: str) ->pg.Surface:
+def load_img(path: str) -> pg.Surface:
     """Load img."""
-    Logger.info(f'Loading image: {path}')
-    img = pg.image.load(str(ASSETS_DIR / 'images' / path))
+    Logger.info(f"Loading image: {path}")
+    img = pg.image.load(str(ASSETS_DIR / "images" / path))
     if not img:
-        Logger.error(f'Failed to load image: {path}')
+        Logger.error(f"Failed to load image: {path}")
     return img.convert_alpha()
 
 
-def load_sound(path: str) ->pg.mixer.Sound:
+def load_sound(path: str) -> pg.mixer.Sound:
     """Load sound."""
-    Logger.info(f'Loading sound: {path}')
-    sound = pg.mixer.Sound(str(ASSETS_DIR / 'sounds' / path))
+    Logger.info(f"Loading sound: {path}")
+    sound = pg.mixer.Sound(str(ASSETS_DIR / "sounds" / path))
     if not sound:
-        Logger.error(f'Failed to load sound: {path}')
+        Logger.error(f"Failed to load sound: {path}")
     return sound
 
 
-def load_font(path: str, size: int) ->pg.font.Font:
+def load_font(path: str, size: int) -> pg.font.Font:
     """Load font."""
-    Logger.info(f'Loading font: {path}')
-    font = pg.font.Font(str(ASSETS_DIR / 'fonts' / path), size)
+    if path is None:
+        return pg.font.Font(None, size)
+    Logger.info(f"Loading font: {path}")
+    font = pg.font.Font(str(ASSETS_DIR / "fonts" / path), size)
     if not font:
-        Logger.error(f'Failed to load font: {path}')
+        Logger.error(f"Failed to load font: {path}")
     return font
 
 
-def load_tmx(path: str) ->TiledMap:
+def load_tmx(path: str) -> TiledMap:
     """Load tmx."""
-    tmxdata = load_pygame(str(ASSETS_DIR / 'maps' / path))
+    tmxdata = load_pygame(str(ASSETS_DIR / "maps" / path))
     if tmxdata is None:
-        Logger.error(f'Failed to load map: {path}')
+        Logger.error(f"Failed to load map: {path}")
     return tmxdata

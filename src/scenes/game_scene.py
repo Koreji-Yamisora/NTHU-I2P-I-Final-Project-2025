@@ -1,17 +1,18 @@
 import pygame as pg
-import threading
 import time
 from src.scenes.scene import Scene
 from src.core import GameManager, OnlineManager
-from src.utils import crd, Logger, PositionCamera, GameSettings, Position
+from src.utils import crd, Logger, PositionCamera, GameSettings, Position, color
 from src.core.services import sound_manager, input_manager, scene_manager
-from src.sprites import Sprite
+from src.sprites import Sprite, Animation
 from typing import override
 from src.interface.components import Button
 from src.interface import SettingOverlay, Inventory
 from src.entities.player import Bush
 from src.interface.components import Overlay
-from src.core.gm_helper import gh, online_manager
+from src.core.gm_helper import gh
+from src.interface.overlay_chat import ChatOverlay
+from src.interface.overlay_evolution import EvolutionOverlay
 
 
 class GameScene(Scene):
@@ -24,11 +25,19 @@ class GameScene(Scene):
 
     def __init__(self):
         super().__init__()
-        gh.load()
+        # gh.load() -> Removed, handled by MenuScene
         self.bush = Bush()
-        self.online_manager = online_manager
-        self.sprite_online = Sprite(
-            "ingame_ui/options1.png", (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE)
+
+        # Use GMHelper's online manager
+        self.online_manager = gh.online_manager
+
+        # Animated sprite for online players
+        self.anim_online = Animation(
+            "character/ow5.png",
+            ["down", "left", "right", "up"],
+            4,
+            (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE),
+            loop=0.5,
         )
         sw = crd(GameSettings.SCREEN_WIDTH)
         sh = crd(GameSettings.SCREEN_HEIGHT)
@@ -52,6 +61,7 @@ class GameScene(Scene):
         )
         self.setting_overlay = SettingOverlay()
         self.inventory = Inventory()
+        self.evolution_overlay = EvolutionOverlay()
         self.shop_on = False
         self.db = 0.0
         self.mt = False
@@ -60,6 +70,23 @@ class GameScene(Scene):
         self.map_on = True
         self.small_map()
 
+        # Day/Night Cycle
+        from src.interface.light_overlay import LightOverlay
+
+        self.light_overlay = LightOverlay()
+
+        # Chat Overlay: Use gh.online_manager
+        self.chat_overlay = ChatOverlay(
+            send_callback=self.handle_chat_input,
+            get_messages=lambda n: gh.online_manager.get_recent_chat(n)
+            if gh.online_manager
+            else [],
+        )
+
+        from src.interface.action_hints import ActionHints
+
+        self.action_hints = ActionHints()
+
     def small_map(self):
         """Small Map."""
         sw = crd(GameSettings.SCREEN_WIDTH)
@@ -67,8 +94,14 @@ class GameScene(Scene):
             self.minimap_frame = Sprite(
                 "UI/raw/UI_Flat_Frame01a.png",
                 (sw // 4, sw // 4 // gh.gm.current_map.ratio),
+                nine_grid_margins=(45, 45, 45, 45),
             )
-        self.minimap_frame.rect.topright = sw - 32, 32
+            self.minimap_frame.image = color.recol(
+                self.minimap_frame.image, (120, 120, 120)
+            )
+        # Only set rect if initialized
+        if hasattr(self, "minimap_frame"):
+            self.minimap_frame.rect.topright = sw - 32, 32
 
     def large_map(self):
         """Large Map."""
@@ -76,7 +109,12 @@ class GameScene(Scene):
         sh = crd(GameSettings.SCREEN_HEIGHT)
         if gh.gm:
             self.minimap_frame = Sprite(
-                "UI/raw/UI_Flat_Frame01a.png", (sw, sw // gh.gm.current_map.ratio)
+                "UI/raw/UI_Flat_Frame01a.png",
+                (sw, sw // gh.gm.current_map.ratio),
+                nine_grid_margins=(45, 45, 45, 45),
+            )
+            self.minimap_frame.image = color.recol(
+                self.minimap_frame.image, (120, 120, 120)
             )
             self.minimap_frame.rect.center = sw // 2, sh // 2
 
@@ -84,19 +122,31 @@ class GameScene(Scene):
     def enter(self) -> None:
         """Enter."""
         sound_manager.play_bgm("RBY 103 Pallet Town.ogg")
-        if self.online_manager:
-            self.online_manager.enter()
+
+        # Ensure minimap is initialized if GM is loaded
+        if gh.gm and (not hasattr(self, "minimap_frame") or self.minimap_frame is None):
+            self.small_map()
+
+        # Ensure online manager is running if it exists
+        if gh.online_manager:
+            gh.online_manager.start()
+            self.init_online_events()
 
     @override
     def exit(self) -> None:
         """Exit."""
-        if self.online_manager:
-            self.online_manager.exit()
+        # Do not stop online manager here
+        pass
 
     @override
     def update(self, dt: float):
         """Update."""
-        if self.setting_overlay.is_open or self.inventory.is_open or self.shop_on:
+        if (
+            self.setting_overlay.is_open
+            or self.inventory.is_open
+            or self.shop_on
+            or self.chat_overlay.is_open
+        ):
             pass
         else:
             self.menu_button.update(dt)
@@ -105,6 +155,8 @@ class GameScene(Scene):
             self.setting_overlay.update(dt)
         if self.inventory.is_open:
             self.inventory.update(dt)
+        if self.evolution_overlay.is_open:
+            self.evolution_overlay.update(dt)
         if gh.gm:
             gh.gm.try_switch_map()
             if gh.gm.player:
@@ -115,17 +167,399 @@ class GameScene(Scene):
                     enemy.update(dt)
                 for npc in gh.gm.current_npcs:
                     npc.update(dt)
-                self.shop_on = any(npc.shop_ov.is_open for npc in gh.gm.current_npcs)
+                self.shop_on = any(
+                    (hasattr(npc, "shop_ov") and npc.shop_ov.is_open)
+                    or (hasattr(npc, "pc_overlay") and npc.pc_overlay.is_open)
+                    for npc in gh.gm.current_npcs
+                )
                 if gh.gm.player.bush_dt:
                     gh.gm.current_fight = self.bush
                     gh.gm.player.bush_enter = False
             gh.gm.bag.update(dt)
+
+            # DIAGNOSTIC: Check online state
+            if self.online_manager:
+                pass
+            else:
+                Logger.info("[ONLINE DEBUG] online_manager is None!")
+
             if gh.gm.player and self.online_manager:
                 _ = self.online_manager.update(
                     gh.gm.player.position.x,
                     gh.gm.player.position.y,
                     gh.gm.current_map.path_name,
+                    gh.gm.player.direction.name,
+                    gh.gm.player.skin_idx,
+                    gh.gm.player.is_moving,
                 )
+                self.update_online_players(dt)
+            # Update Day/Night Cycle
+            if (
+                hasattr(self, "light_overlay")
+                and gh.gm.current_map.path_name == "map.tmx"
+            ):
+                self.light_overlay.update(dt)
+
+            # Update PvP Request Overlay
+            if hasattr(self, "battle_request_ov") and self.battle_request_ov.is_open:
+                self.battle_request_ov.update(dt)
+
+            # INPUT HANDLING
+            # Toggle Inventory
+            if input_manager.key_pressed(pg.K_b) or input_manager.button_pressed(
+                3
+            ):  # Y button
+                if not self.inventory.is_open:
+                    self.inventory.open()
+                else:
+                    self.inventory.close()
+
+            # Toggle Map (Minimap Size)
+            if input_manager.key_pressed(pg.K_m) or input_manager.button_pressed(
+                4
+            ):  # L1
+                if self.map_on:
+                    # Toggle between small and large
+                    if hasattr(self, "minimap_frame"):
+                        if self.minimap_frame.rect.width < GameSettings.SCREEN_WIDTH:
+                            self.large_map()
+                        else:
+                            self.small_map()
+
+            # Settings / Exit Overlay
+            if input_manager.key_pressed(pg.K_ESCAPE) or input_manager.button_pressed(
+                6
+            ):  # Select/Back
+                if self.inventory.is_open:
+                    self.inventory.close()
+                elif self.setting_overlay.is_open:
+                    self.setting_overlay.close()
+                elif self.chat_overlay.is_open:
+                    self.chat_overlay.close()
+                # Close other overlays if open
+                elif hasattr(self, "shop_on") and self.shop_on:
+                    # Close shop logic if possible (usually handled by NPC interaction end)
+                    pass
+                else:
+                    self.setting_overlay.open()
+
+            # Chat
+            if input_manager.key_pressed(pg.K_t) or input_manager.key_pressed(
+                pg.K_SLASH
+            ):
+                if not self.chat_overlay.is_open:
+                    self.chat_overlay.open()
+
+            # Interact / Coop Challenge
+            if input_manager.key_pressed(pg.K_SPACE) or input_manager.button_pressed(
+                0
+            ):  # A button
+                # Interact is usually handled by Player update checking inputs,
+                # but for coop challenge or explicit interaction we might need checks here.
+                pass
+
+        if gh.gm:
+            # Pass controller inputs to player movement if needed
+            # Player update handles WASD, we might need to patch it for Joystick
+            pass
+
+        # Update Action Hints
+        actions = []
+        if self.setting_overlay.is_open:
+            actions = [("BACK", "Close"), ("CONFIRM", "Select")]
+        elif self.inventory.is_open:
+            actions = [
+                ("BACK", "Close"),
+                ("CONFIRM", "Use"),
+                ("UP", "Nav"),
+                ("DOWN", "Nav"),
+            ]
+        elif self.chat_overlay.is_open:
+            actions = [("BACK", "Close")]
+        elif hasattr(self, "shop_on") and self.shop_on:
+            actions = [
+                ("BACK", "Leave"),
+                ("CONFIRM", "Buy"),
+                ("UP", "Nav"),
+                ("DOWN", "Nav"),
+            ]
+        else:
+            # Normal Game
+            actions = [
+                ("INTERACT", "Interact"),
+                ("INVENTORY", "Bag"),
+                ("MAP", "Map"),
+                ("CHAT", "Chat"),
+                ("SETTING", "Setting"),
+            ]
+
+        self.action_hints.set_actions(actions)
+
+        # Update PvP Request Overlay
+        if hasattr(self, "battle_request_ov") and self.battle_request_ov.is_open:
+            self.battle_request_ov.update(dt)
+
+        if GameSettings.IS_ONLINE:
+            t_pressed = input_manager.key_pressed(pg.K_t)
+            slash_pressed = input_manager.key_pressed(pg.K_SLASH)
+
+            if (t_pressed or slash_pressed) and not self.chat_overlay.is_open:
+                # Only open if no other overlay is open?
+                if not (
+                    self.setting_overlay.is_open
+                    or self.inventory.is_open
+                    or self.shop_on
+                    or self.evolution_overlay.is_open
+                ):
+                    initial = "/" if slash_pressed else ""
+                    self.chat_overlay.open(initial_text=initial)
+
+            if self.chat_overlay.is_open:
+                self.chat_overlay.update(dt)
+
+        if (
+            input_manager.key_pressed(pg.K_ESCAPE)
+            and not self.inventory.is_open
+            and not self.chat_overlay.is_open
+        ):
+            input_manager.reset()
+            self.setting_overlay.open()
+        if input_manager.key_pressed(pg.K_m):
+            input_manager.reset()
+            for overlay in Overlay._instances:
+                overlay.close()
+            self.map_toggle()
+        if self.map_on and self.mt and input_manager.mouse_pressed(1):
+            self.tile_pos = self.get_tile_from_mouse()
+            if self.tile_pos:
+                Logger.info(f"Clicked Tile Position: {self.tile_pos}")
+                if gh.gm and gh.gm.player:
+                    start_pos = Position(
+                        int(gh.gm.player.position.x // GameSettings.TILE_SIZE),
+                        int(gh.gm.player.position.y // GameSettings.TILE_SIZE),
+                    )
+                    path = self.bfs(start_pos, self.tile_pos)
+                    if path:
+                        Logger.info(f"Path found: {len(path)} steps")
+                        gh.gm.player.set_path(path)
+                        self.map_toggle()
+                    else:
+                        Logger.info("No path found")
+
+    def update_online_players(self, dt: float):
+        """Update online players visuals and handle interactions."""
+        if not self.online_manager:
+            return
+
+        players = self.online_manager.get_list_players()
+
+        if players:
+            Logger.info(f"[ONLINE] Found {len(players)} online players")
+
+        current_map = gh.gm.current_map.path_name if gh.gm else ""
+
+        # Dictionary to store animations: self.online_animations = {pid: animation}
+        # Initialize if not exists
+        if not hasattr(self, "online_animations"):
+            self.online_animations = {}
+            Logger.info("[ONLINE] Initialized online_animations dict")
+
+        # Clean up old players
+        active_ids = set()
+        for p in players:
+            active_ids.add(p["id"])
+
+        to_remove = []
+        for pid in self.online_animations:
+            if pid not in active_ids:
+                to_remove.append(pid)
+        for pid in to_remove:
+            del self.online_animations[pid]
+
+        for p in players:
+            if p["map"] != current_map:
+                Logger.info(
+                    f"[ONLINE] Skipping player {p['id']} - different map ({p['map']} vs {current_map})"
+                )
+                continue
+
+            Logger.info(
+                f"[ONLINE] Processing player {p['id']} at ({p['x']}, {p['y']}) on map {p['map']}"
+            )
+
+            pid = p["id"]
+            skin_idx = p.get("skin", 0)
+            direction_name = p.get("direction", "DOWN").lower()
+            is_moving = p.get("moving", False)
+
+            # Create or get animation
+            if pid not in self.online_animations:
+                # Determine skin file
+                x = skin_idx % 6 + 2  # Matches Entity logic
+                self.online_animations[pid] = {
+                    "anim": Animation(
+                        f"character/ow{x}.png",
+                        ["down", "left", "right", "up"],
+                        4,
+                        (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE),
+                        loop=0.5,  # Always use non-zero loop value
+                    ),
+                    "skin": skin_idx,
+                }
+
+            anim_data = self.online_animations[pid]
+            anim = anim_data["anim"]
+
+            # Check if skin changed
+            if anim_data["skin"] != skin_idx:
+                x = skin_idx % 6 + 2
+                anim = Animation(
+                    f"character/ow{x}.png",
+                    ["down", "left", "right", "up"],
+                    4,
+                    (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE),
+                    loop=0.5,  # Always use non-zero loop value
+                )
+                anim_data["anim"] = anim
+                anim_data["skin"] = skin_idx
+
+            # Update direction
+            if anim.cur_row != direction_name:
+                anim.switch(direction_name)
+
+            # Update animation state (play/stop) manually if needed or via loop
+            # The Animation class might need 'stop()' or we just don't update if not moving
+            if is_moving:
+                anim.update(dt)
+            else:
+                anim.accumulator = 0  # Reset frame
+
+            # Update position
+            # Interpolation could accept dt here for smoothing
+            # Set WORLD position, draw() will handle camera transform
+            anim.update_pos(Position(p["x"], p["y"]))
+
+            # Interaction Logic (PvP Request)
+            # Check distance to player
+            if gh.gm.player:
+                dist = gh.gm.player.position.distance_to(Position(p["x"], p["y"]))
+
+                # DIAGNOSTIC LOG (throttled)
+                if (
+                    hasattr(self, "_last_log_time")
+                    and time.time() - self._last_log_time > 2.0
+                ):
+                    Logger.info(
+                        f"[PvP DEBUG] PID {pid} dist: {dist:.1f}, Threshold: {GameSettings.TILE_SIZE * 1.5}"
+                    )
+                    if dist < GameSettings.TILE_SIZE * 1.5:
+                        Logger.info(
+                            f"[PvP DEBUG] Player {pid} is in range! Press E to challenge."
+                        )
+                    self._last_log_time = time.time()
+                elif not hasattr(self, "_last_log_time"):
+                    self._last_log_time = time.time()
+
+                if dist < GameSettings.TILE_SIZE * 1.5:
+                    # Show prompts?
+                    if input_manager.key_pressed(pg.K_e):
+                        Logger.info(
+                            f"[PvP DEBUG] 'E' pressed! Sending Battle Request to {pid}"
+                        )
+                        success = self.online_manager.send_event(
+                            pid,
+                            {
+                                "type": "battle_request",
+                                "from_id": self.online_manager.player_id,
+                            },
+                        )
+                        if success:
+                            Logger.info("[PvP DEBUG] Event send returned True")
+                        else:
+                            Logger.error(
+                                "[PvP DEBUG] Event send returned False (Queue full?)"
+                            )
+
+    def init_online_events(self):
+        if self.online_manager:
+            self.online_manager.register_event_callback(self.handle_online_event)
+
+    def handle_online_event(self, event: dict):
+        ev_type = event.get("type")
+        Logger.info(f"[PvP DEBUG] Received event: {event}")
+
+        if ev_type == "battle_request":
+            sender = event.get("from_id")
+            Logger.info(f"[PvP DEBUG] Processing battle request from {sender}")
+            # Open Overlay
+            from src.interface.overlay_battle_request import BattleRequestOverlay
+
+            try:
+                self.battle_request_ov = BattleRequestOverlay(
+                    sender, lambda sid: self.accept_battle(sid), lambda: None
+                )
+                self.battle_request_ov.open()
+                Logger.info(
+                    f"[PvP DEBUG] Overlay opened: {self.battle_request_ov.is_open}"
+                )
+            except Exception as e:
+                Logger.error(f"[PvP DEBUG] Failed to open overlay: {e}")
+
+        elif ev_type == "battle_accept":
+            # Start Battle
+            opponent_id = event.get("from_id")
+            Logger.info(f"Battle Accepted by {opponent_id}")
+            # Transition to PvP scene
+            self.start_pvp_battle(opponent_id)
+
+    def accept_battle(self, sender_id: int):
+        """Accept a battle request and start PvP combat"""
+        if self.online_manager:
+            # Send acceptance message
+            self.online_manager.send_event(
+                sender_id,
+                {"type": "battle_accept", "from_id": self.online_manager.player_id},
+            )
+            Logger.info("Sent battle acceptance, starting PvP...")
+            # Start battle
+            self.start_pvp_battle(sender_id)
+
+    def start_pvp_battle(self, opponent_id: int):
+        """Initialize and start a PvP battle"""
+        from src.core.services import scene_manager
+
+        # Create a temporary battle context object
+        class PvPBattleContext:
+            def __init__(self, opponent_id: int):
+                self.opponent_id = opponent_id
+                # Placeholder for opponent's monsters - will be synced during battle
+                self.monsters = [
+                    {
+                        "id": 1,  # Default pokemon
+                        "name": "Opponent",
+                        "level": 5,
+                        "hp": 100,
+                        "chp": 100,
+                        "atk": 10,
+                        "def": 10,
+                        "spe": 10,
+                        "move": [],
+                        # Add missing visual fields
+                        "sprite_path": "pokemon/1.png",
+                        "sprite_back_path": "pokemon/back/1.png",
+                    }
+                ]
+
+        # Set current fight to PvP context
+        gh.gm.current_fight = PvPBattleContext(opponent_id)
+
+        Logger.info(f"Starting PvP battle with opponent {opponent_id}")
+        scene_manager.change_scene("pvp")
+
+    # Update Day/Night Cycle
+    def _update_lighting(self, dt):
+        if hasattr(self, "light_overlay") and gh.gm.current_map.path_name == "map.tmx":
+            self.light_overlay.update(dt)
         if input_manager.key_pressed(pg.K_ESCAPE) and not self.inventory.is_open:
             input_manager.reset()
             self.setting_overlay.open()
@@ -251,6 +685,22 @@ class GameScene(Scene):
                 enemy.draw(screen, camera)
             for npc in gh.gm.current_npcs:
                 npc.draw(screen, camera)
+
+            # Draw Day/Night Cycle (Darkness + Lights)
+            # Draw after entities but before UI
+            if (
+                hasattr(self, "light_overlay")
+                and gh.gm.current_map.path_name == "map.tmx"
+            ):
+                self.light_overlay.draw(screen, camera)
+
+            # Draw NPC/PC Overlays after lighting (so they are bright)
+            for npc in gh.gm.current_npcs:
+                if hasattr(npc, "shop_ov") and npc.shop_ov.is_open:
+                    npc.shop_ov.draw(screen)
+                if hasattr(npc, "pc_overlay") and npc.pc_overlay.is_open:
+                    npc.pc_overlay.draw(screen)
+
         if self.setting_overlay.is_open or self.inventory.is_open or self.shop_on:
             pass
         else:
@@ -260,76 +710,205 @@ class GameScene(Scene):
             self.setting_overlay.draw(screen)
         if self.inventory.is_open:
             self.inventory.draw(screen)
-        if gh.gm:
+
+        if GameSettings.IS_ONLINE:
+            self.chat_overlay.draw(screen)
+
+        if self.evolution_overlay.is_open:
+            self.evolution_overlay.draw(screen)
+
+        if gh.gm and not (
+            self.setting_overlay.is_open
+            or self.inventory.is_open
+            or self.shop_on
+            or self.evolution_overlay.is_open
+        ):
             self.draw_minimap(screen)
-            if self.online_manager and gh.gm.player:
-                list_online = self.online_manager.get_list_players()
-                for player in list_online:
-                    if player["map"] == gh.gm.current_map.path_name:
-                        cam = gh.gm.player.camera
-                        pos = cam.transform_position_as_position(
-                            Position(player["x"], player["y"])
-                        )
-                        self.sprite_online.update_pos(pos)
-                        self.sprite_online.draw(screen)
+            if hasattr(self, "online_animations"):
+                cam = gh.gm.player.camera
+                count = len(self.online_animations)
+                if count > 0:
+                    Logger.info(f"[ONLINE] Drawing {count} online player(s)")
+                for pid, anim_data in self.online_animations.items():
+                    anim = anim_data["anim"]
+                    anim.draw(screen, cam)
+                    Logger.info(f"[ONLINE] Drew player {pid} at rect {anim.rect}")
+
+            if hasattr(self, "battle_request_ov") and self.battle_request_ov.is_open:
+                self.battle_request_ov.draw(screen)
+
+        # Draw Action Hints
+        self.action_hints.draw(screen)
 
     def draw_minimap(self, screen: pg.Surface):
         """Draw minimap."""
-        if gh.gm:
+        if not gh.gm:
+            return
+
+        # Check for cache invalidation
+        current_map_path = gh.gm.current_map.path_name
+
+        # Initialize cache variables if they don't exist
+        if not hasattr(self, "_cached_minimap_surface"):
+            self._cached_minimap_surface = None
+            self._cached_minimap_params = (None, None)  # (map_path, is_large)
+
+        params = (current_map_path, self.mt)
+
+        # Regenerate cache if needed
+        if (
+            self._cached_minimap_surface is None
+            or self._cached_minimap_params != params
+        ):
+            Logger.info("Regenerating minimap cache...")
             if self.mt:
-                s = pg.transform.scale(
-                    gh.gm.current_map.minimap_surface(4, 2),
-                    (
-                        self.minimap_frame.rect.width
-                        - crd(self.minimap_frame.rect.width).per(3),
-                        self.minimap_frame.rect.height
-                        - crd(self.minimap_frame.rect.width).per(3),
-                    ),
-                )
+                # Large map settings
+                pixel_scale = 2
+                frame_inner_w = self.minimap_frame.rect.width - crd(
+                    self.minimap_frame.rect.width
+                ).per(3)
+                frame_inner_h = self.minimap_frame.rect.height - crd(
+                    self.minimap_frame.rect.width
+                ).per(3)
             else:
-                s = pg.transform.scale(
-                    gh.gm.current_map.minimap_surface(4, 1),
-                    (
-                        self.minimap_frame.rect.width
-                        - crd(self.minimap_frame.rect.width).per(8),
-                        self.minimap_frame.rect.height
-                        - crd(self.minimap_frame.rect.width).per(8),
-                    ),
-                )
-            rect = s.get_rect()
-            rect.center = self.minimap_frame.image.get_rect().center
-            if gh.gm.player:
-                map_w = gh.gm.current_map.tmxdata.width * GameSettings.TILE_SIZE
-                map_h = gh.gm.current_map.tmxdata.height * GameSettings.TILE_SIZE
-                scale_x = s.get_width() / map_w
-                scale_y = s.get_height() / map_h
-                if self.mt:
-                    ts = GameSettings.TILE_SIZE // 2
-                else:
-                    ts = GameSettings.TILE_SIZE
+                # Small map settings
+                pixel_scale = 1
+                frame_inner_w = self.minimap_frame.rect.width - crd(
+                    self.minimap_frame.rect.width
+                ).per(8)
+                frame_inner_h = self.minimap_frame.rect.height - crd(
+                    self.minimap_frame.rect.width
+                ).per(8)
+
+            raw_surface = gh.gm.current_map.minimap_surface(4, pixel_scale)
+            self._cached_minimap_surface = pg.transform.scale(
+                raw_surface, (frame_inner_w, frame_inner_h)
+            )
+            self._cached_minimap_params = params
+
+        # 1. Draw the Frame
+        self.minimap_frame.draw(screen)
+
+        # 2. Draw the cached map surface centered on the frame
+        s = self._cached_minimap_surface
+        rect = s.get_rect()
+        rect.center = (
+            self.minimap_frame.rect.center
+        )  # Use rect.center, not image.rect.center
+        screen.blit(s, rect)
+
+        # 3. Draw Entities on top
+        if gh.gm.player:
+            map_w = gh.gm.current_map.tmxdata.width * GameSettings.TILE_SIZE
+            map_h = gh.gm.current_map.tmxdata.height * GameSettings.TILE_SIZE
+            scale_x = s.get_width() / map_w
+            scale_y = s.get_height() / map_h
+
+            # Map toggle determines tile size for "dots" on minimap?
+            # Original code: mt -> TILE_SIZE//2, else TILE_SIZE
+            if self.mt:
+                ts = GameSettings.TILE_SIZE // 2
+            else:
+                ts = GameSettings.TILE_SIZE
+
+            # Helper to draw rect relative to minimap screen position
+            def draw_on_map(color, world_pos):
                 r = pg.Rect(
-                    gh.gm.player.position.x * scale_x,
-                    gh.gm.player.position.y * scale_y,
+                    rect.left + world_pos.x * scale_x,
+                    rect.top + world_pos.y * scale_y,
                     ts * scale_x,
                     ts * scale_y,
                 )
-                pg.draw.rect(s, "RED", r)
-                b = pg.Rect(
-                    (gh.gm.player.position.x - GameSettings.SCREEN_WIDTH // 2)
-                    * scale_x,
-                    (gh.gm.player.position.y - GameSettings.SCREEN_HEIGHT // 2)
-                    * scale_y,
-                    GameSettings.SCREEN_WIDTH * scale_x,
-                    GameSettings.SCREEN_HEIGHT * scale_y,
+                pg.draw.rect(screen, color, r)
+
+            # Player (Green)
+            draw_on_map("GREEN", gh.gm.player.position)
+
+            # Draw Enemy Trainers (Red)
+            for enemy in gh.gm.current_enemy_trainers:
+                draw_on_map("RED", enemy.position)
+
+            # Draw NPCs (Blue)
+            for npc in gh.gm.current_npcs:
+                draw_on_map("BLUE", npc.position)
+
+            # Draw Online Players (Purple)
+            if self.online_manager:
+                for player in self.online_manager.get_list_players():
+                    if player["map"] == gh.gm.current_map.path_name:
+                        # Construct a position object purely for drawing
+                        p_pos = Position(player["x"], player["y"])
+                        draw_on_map("PURPLE", p_pos)
+
+            # Camera View Box
+            b = pg.Rect(
+                rect.left
+                + (gh.gm.player.position.x - GameSettings.SCREEN_WIDTH // 2) * scale_x,
+                rect.top
+                + (gh.gm.player.position.y - GameSettings.SCREEN_HEIGHT // 2) * scale_y,
+                GameSettings.SCREEN_WIDTH * scale_x,
+                GameSettings.SCREEN_HEIGHT * scale_y,
+            )
+            pg.draw.rect(screen, "AZURE", b, 2)
+
+            # Target Tile
+            if self.tile_pos:
+                # tile_pos is in Tile Coords, convert to pixels for drawing logic which expects pixels
+                t_pixel_pos = Position(
+                    self.tile_pos.x * GameSettings.TILE_SIZE,
+                    self.tile_pos.y * GameSettings.TILE_SIZE,
                 )
-                pg.draw.rect(s, "AZURE", b, 2)
-                if self.tile_pos:
-                    w = pg.Rect(
-                        self.tile_pos.x * scale_x * GameSettings.TILE_SIZE,
-                        self.tile_pos.y * scale_y * GameSettings.TILE_SIZE,
-                        ts * scale_x,
-                        ts * scale_y,
-                    )
-                    pg.draw.rect(s, "GREEN", w)
-            self.minimap_frame.image.blit(s, rect)
-            self.minimap_frame.draw(screen)
+                draw_on_map("GREEN", t_pixel_pos)
+
+    def handle_chat_input(self, text: str) -> bool:
+        """Handle chat input, intercepting commands."""
+        text = text.strip()
+        if not text:
+            return False
+
+        if text.startswith("/"):
+            # It's a command
+            parts = text.split()
+            cmd = parts[0].lower()
+            args = parts[1:]
+
+            if cmd == "/evolve":
+                if not args:
+                    Logger.info("Usage: /evolve <pokemon_id>")
+                    return True  # Return True to clear input
+
+                try:
+                    target_id = int(args[0])
+                except ValueError:
+                    Logger.error("Invalid ID format")
+                    return True
+
+                if gh.gm and gh.gm.bag:
+                    # Find Pokemon with this ID in the bag (monsters_data)
+                    found_mon = None
+                    for i in range(min(6, len(gh.gm.bag._monsters_data))):
+                        if gh.gm.bag._monsters_data[i]["id"] == target_id:
+                            found_mon = gh.gm.bag._monsters_data[i]
+                            break
+
+                    if found_mon:
+                        Logger.info(f"Force evolving Pokemon ID {target_id}")
+                        self.chat_overlay.close()  # Close chat
+
+                        def on_evolve_finish():
+                            # Perform evolution logic
+                            gh.gm.bag.evolve(found_mon)
+                            Logger.info(
+                                f"Forced evolution for ID {target_id} complete."
+                            )
+
+                        self.evolution_overlay.setup(found_mon, on_evolve_finish)
+                    else:
+                        Logger.warning(f"No Pokemon with ID {target_id} found in bag.")
+                return True
+
+        # Not a local command, send to server
+        if self.online_manager:
+            return self.online_manager.send_chat(text)
+
+        return False

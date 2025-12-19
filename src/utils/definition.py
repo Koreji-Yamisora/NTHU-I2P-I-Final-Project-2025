@@ -59,86 +59,53 @@ class Teleport:
 
     pos: Position
     destination: str
+    to_pos: Position | None = None
 
     @overload
-    def __init__(self, x: int, y: int, destination: str) -> None: ...
+    def __init__(self, x: int, y: int, destination: str, to_x: int | None = None, to_y: int | None = None) -> None: ...
 
     @overload
-    def __init__(self, pos: Position, destination: str) -> None: ...
+    def __init__(self, pos: Position, destination: str, to_pos: Position | None = None) -> None: ...
 
     def __init__(self, *args, **kwargs):
+        self.to_pos = None
         if isinstance(args[0], Position):
             self.pos = args[0]
             self.destination = args[1]
+            if len(args) > 2:
+                self.to_pos = args[2]
         else:
             x, y, dest = args[0], args[1], args[2]
             self.pos = Position(x, y)
             self.destination = dest
+            if len(args) > 4:
+                 self.to_pos = Position(args[3], args[4])
+            elif "to_x" in kwargs and "to_y" in kwargs:
+                 self.to_pos = Position(kwargs["to_x"], kwargs["to_y"])
 
     def to_dict(self):
         """To Dict."""
-        return {
+        data = {
             "x": self.pos.x // GameSettings.TILE_SIZE,
             "y": self.pos.y // GameSettings.TILE_SIZE,
             "destination": self.destination,
         }
+        if self.to_pos:
+            data["to_x"] = self.to_pos.x // GameSettings.TILE_SIZE
+            data["to_y"] = self.to_pos.y // GameSettings.TILE_SIZE
+        return data
 
     @classmethod
     def from_dict(cls, data: dict):
         """From Dict."""
+        to_pos = None
+        if "to_x" in data and "to_y" in data:
+            to_pos = Position(data["to_x"] * GameSettings.TILE_SIZE, data["to_y"] * GameSettings.TILE_SIZE)
+        
         return cls(
-            data["x"] * GameSettings.TILE_SIZE,
-            data["y"] * GameSettings.TILE_SIZE,
+            Position(data["x"] * GameSettings.TILE_SIZE, data["y"] * GameSettings.TILE_SIZE),
             data["destination"],
-        )
-
-
-@dataclass
-class Warp:
-    """Warp."""
-
-    source: Position
-    destination: Position
-
-    @overload
-    def __init__(
-        self, source_x: int, source_y: int, dest_x: int, dest_y: int
-    ) -> None: ...
-
-    @overload
-    def __init__(self, source: Position, destination: Position) -> None: ...
-
-    def __init__(self, *args, **kwargs):
-        if isinstance(args[0], Position):
-            self.source = args[0]
-            self.destination = args[1]
-        else:
-            if len(args) == 4:
-                source_x, source_y, dest_x, dest_y = args[0], args[1], args[2], args[3]
-            else:
-                raise ValueError(
-                    "Warp requires 4 arguments: source_x, source_y, dest_x, dest_y"
-                )
-            self.source = Position(source_x, source_y)
-            self.destination = Position(dest_x, dest_y)
-
-    def to_dict(self):
-        """To Dict."""
-        return {
-            "source_x": self.source.x // GameSettings.TILE_SIZE,
-            "source_y": self.source.y // GameSettings.TILE_SIZE,
-            "dest_x": self.destination.x // GameSettings.TILE_SIZE,
-            "dest_y": self.destination.y // GameSettings.TILE_SIZE,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        """From Dict."""
-        return cls(
-            data["source_x"] * GameSettings.TILE_SIZE,
-            data["source_y"] * GameSettings.TILE_SIZE,
-            data["dest_x"] * GameSettings.TILE_SIZE,
-            data["dest_y"] * GameSettings.TILE_SIZE,
+            to_pos
         )
 
 

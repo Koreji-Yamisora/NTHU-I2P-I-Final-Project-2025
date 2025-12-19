@@ -1,64 +1,38 @@
 from src.scenes.combat import CombatScene
-from src.core import gh
-from src.utils import Logger
+from src.utils.combat import CombatType as ct
 from typing import override
 
 class BattleScene(CombatScene):
     """Trainer battle scene"""
-    
+
     def __init__(self):
-        super().__init__(combat_type="trainer")
-    
-    @override
+        super().__init__(combat_type=ct.TRAINER)
+
     def load_data(self):
-        """Load trainer battle data"""
+        from src.core import gh
         if not gh.gm:
             gh.load()
-        elif not gh.gm.current_fight:
+        if not gh.gm.current_fight:
             self.exit()
-        else:
-            self._init()
+            return
 
-            self.current = 0  # Trainer battles use first monster in party
-            self.enemy = 0
-            self.action_overlay.is_active = True
-            self.action_overlay.is_passive = True
-            self.next = None
+        self.ci1 = 0
+        for i, mon in enumerate(gh.gm.bag.monsters):
+            if mon["chp"] > 0:
+                self.ci1 = i
+                break
+        
+        self.ci2 = 0
+        self.m1 = gh.gm.bag.monsters[self.ci1]
+        self.m2 = gh.gm.current_fight.monsters[self.ci2]
 
-            self.player_turn = True
-            self.waiting_for_action = True
-            self.clear()
-            self.monster1 = gh.gm.bag.monsters[self.current]
-            print(gh.gm.current_fight.monsters)
-            self.monster2 = gh.gm.current_fight.monsters[self.enemy]
-            self.img()
-
-            self.items = gh.gm.bag.get_items()
-            self.turn = True
-            self.move_overlay.inmove(self.monster1["move"])
-            self.health_overlay.load()
-            from src.utils import crd, GameSettings
-            from src.sprites import Text
-            sh = crd(GameSettings.SCREEN_HEIGHT)
-            self.noti = Text(f"What will {self.monster1['name']} do?", 32, "Black")
-            self.noti.rect.topleft = (
-                self.bg3.rect.left + sh.per(3),
-                self.bg3.rect.top + sh.per(2),
-            )
-            self.item_overlay.init()
-            self.switch_UI.init()
-            self.move_refresh()
-            self.move_overlay.inmove(self.monster1["move"])
-
-            # Combat State
-            self.player_action = None
-            self.enemy_action = None
-            self.turn_queue = []
-            self.executing_turn = False
-            self.turn_timer = 0.0
-            
-            # Stat stages for both Pokemon (range: -6 to +6)
-            self.stat_stages = {
-                "player": {"atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0},
-                "enemy": {"atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0}
-            }
+        self.init_logic()
+        self._img()
+        
+        self.health_overlay.load()
+        self.switch_UI.init()
+        self.item_overlay.init()
+        self.move_refresh()
+        self.move_overlay.inmove(self.m1["move"])
+        
+        self.common_ui_init()

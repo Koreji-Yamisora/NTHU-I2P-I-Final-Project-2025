@@ -117,8 +117,6 @@ class Npc(Entity):
             if los_rect is not None:
                 pygame.draw.rect(screen, (255, 255, 0), camera.
                     transform_rect(los_rect), 1)
-        if self.shop_data:
-            self.shop_ov.draw(screen)
 
     def interact(self):
         """Interact."""

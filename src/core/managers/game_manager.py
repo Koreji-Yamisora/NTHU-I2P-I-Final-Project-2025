@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.maps.map import Map
     from src.entities.player import Player, Bush
-    from src.entities.enemy_trainer import EnemyTrainer
+    from src.entities.enemy_trainer import EnemyTrainer, EnemyTrainerClassification
     from src.entities.npc import Npc
     from src.data.bag import Bag
 
@@ -59,7 +59,9 @@ class GameManager:
         self.next_spawn_pos = None
         self.previous_map = ""
         self.player_level = player_level
+        self.player_level = player_level
         self.fight_count = fight_count
+        self.dialog_overlay = None  # Runtime assignment
 
     @property
     def current_map(self) -> Map:
@@ -213,25 +215,79 @@ class GameManager:
         """From Dict."""
         from src.maps.map import Map
         from src.entities.player import Player
-        from src.entities.enemy_trainer import EnemyTrainer
+        from src.maps.map import Map
+        from src.entities.player import Player
+        from src.entities.enemy_trainer import EnemyTrainer, EnemyTrainerClassification
+        from src.entities.npc import Npc
         from src.entities.npc import Npc
         from src.data.bag import Bag
 
+        # Load available maps from assets/maps (recursively)
+        map_files = []
+        maps_dir = "assets/maps"
+        for root, dirs, files in os.walk(maps_dir):
+            for file in files:
+                if file.endswith(".tmx"):
+                    # Create relative path from assets/maps
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, maps_dir)
+                    map_files.append(rel_path)
+
+        Logger.info(f"Found maps: {map_files}")
+
         Logger.info("Loading maps")
-        maps_data: list[dict] = data["map"]
+        maps_data: list[dict] = data.get("map", [])
         maps: dict[str, Map] = {}
         player_spawns: dict[str, Position] = {}
         trainers: dict[str, list[EnemyTrainer]] = {}
         npcs: dict[str, list[Npc]] = {}
+
+        # 1. Load registered maps from save file
+        loaded_map_keys = set()
         for entry in maps_data:
             path = entry["path"]
-            maps[path] = Map.from_dict(entry)
-            sp = entry.get("player")
-            if sp:
-                player_spawns[path] = Position(
-                    sp["x"] * GameSettings.TILE_SIZE, sp["y"] * GameSettings.TILE_SIZE
-                )
+            # Try to match entry path to one of our found map_files
+            actual_path = path
+            # If path in save is just filename but we have relative path now
+            if not os.path.exists(os.path.join(maps_dir, path)):
+                for rel in map_files:
+                    if os.path.basename(rel) == os.path.basename(path):
+                        actual_path = rel
+                        break
+
+            if os.path.exists(os.path.join(maps_dir, actual_path)):
+                # Register by FILENAME for compatibility
+                key = os.path.basename(actual_path)
+
+                # IMPORTANT: Update entry path to actual_path so Map loads correct file from disk
+                # This fixes FileNotFoundError if entry["path"] was just a filename but file is nested
+                entry["path"] = actual_path
+                maps[key] = Map.from_dict(entry)
+
+                loaded_map_keys.add(key)
+                sp = entry.get("player")
+                if sp:
+                    player_spawns[key] = Position(
+                        sp["x"] * GameSettings.TILE_SIZE,
+                        sp["y"] * GameSettings.TILE_SIZE,
+                    )
+
+        # 2. Load missing maps found in assets/maps (fresh load)
+        for rel_path in map_files:
+            key = os.path.basename(rel_path)
+            if key not in loaded_map_keys:
+                Logger.info(f"Loading new map: {rel_path} as {key}")
+                try:
+                    new_map = Map(rel_path, [], Position(0, 0))  # Default spawn
+                    maps[key] = new_map
+                    loaded_map_keys.add(key)
+                except Exception as e:
+                    Logger.error(f"Failed to load map {rel_path}: {e}")
+
         current_map = data["current_map"]
+        if current_map not in maps:
+            current_map = list(maps.keys())[0] if maps else "map.tmx"
+
         gm = cls(
             maps,
             current_map,
@@ -245,35 +301,127 @@ class GameManager:
             username=data.get("username", "Player"),
         )
         gm.current_map_key = current_map
+
         Logger.info("Loading enemy trainers and npc")
-        for m in data["map"]:
-            raw_data = m["enemy_trainers"]
-            gm.enemy_trainers[m["path"]] = [
-                EnemyTrainer.from_dict(t, gm) for t in raw_data
-            ]
-            for i, n in enumerate(gm.enemy_trainers[m["path"]]):
+
+        # Helper to get map data if exists in save
+        def get_saved_map_data(key):
+            for m in maps_data:
+                # heuristic: match basenames
+                if os.path.basename(m["path"]) == key:
+                    return m
+            return None
+
+        # Process entities for all loaded maps
+        for map_key, map_obj in maps.items():
+            saved_data = get_saved_map_data(map_key)
+
+            # --- Load Trainers ---
+            gm.enemy_trainers[map_key] = []
+            if saved_data and saved_data.get("enemy_trainers"):
+                # Load from save file
+                raw_data = saved_data.get("enemy_trainers", [])
+                gm.enemy_trainers[map_key] = [
+                    EnemyTrainer.from_dict(t, gm) for t in raw_data
+                ]
+
+            # Temporary lists for this map
+            trainers_to_add = []
+            npcs_to_add = []
+
+            # Parse entities from Object Layer if available
+            map_entities = map_obj.get_entities()
+
+            for entity in map_entities:
+                name = entity["name"]
+                props = entity["properties"]
+
+                # Characters (NPCs / Trainers)
+                if (
+                    name == "Character" or name is None
+                ):  # Sometimes name is empty in Tiled
+                    char_id = props.get("character_id")
+
+                    if char_id:
+                        if char_id == "Nurse":
+                            npc_data = {
+                                "x": entity["x"] / GameSettings.TILE_SIZE,
+                                "y": entity["y"] / GameSettings.TILE_SIZE,
+                                "skin": "Nurse",
+                                "dialog": [
+                                    "Welcome to the Pokemon Center!",
+                                    "We heal your Pokemon.",
+                                ],
+                                "name": "Nurse",
+                            }
+                            npcs_to_add.append(Npc.from_dict(npc_data, gm))
+                        else:
+                            # Assume EnemyTrainer
+                            direction_str = props.get("direction", "DOWN").upper()
+                            facing = Direction.DOWN
+                            if hasattr(Direction, direction_str):
+                                facing = getattr(Direction, direction_str)
+
+                            trainer_level = int(props.get("level", 5))
+
+                            trainer = EnemyTrainer(
+                                x=entity["x"],
+                                y=entity["y"],
+                                game_manager=gm,
+                                classification=EnemyTrainerClassification.STATIONARY,
+                                facing=facing,
+                                level=trainer_level,
+                            )
+                            trainers_to_add.append(trainer)
+
+            # Use 'Entities' object layer if not loaded from save or if we want to supplement
+            if not gm.enemy_trainers[map_key]:
+                gm.enemy_trainers[map_key] = trainers_to_add
+
+            for i, n in enumerate(gm.enemy_trainers[map_key]):
                 n.change_skin(i)
-            raw_data = m["npcs"]
-            npc_list = []
-            from src.entities.pc import PCEntity
 
-            for t in raw_data:
-                # Detect PC by coordinate (hack for save file compatibility)
-                if m["path"] == "map.tmx" and t.get("x") == 18 and t.get("y") == 30:
-                    npc_list.append(
-                        PCEntity(
-                            t["x"] * GameSettings.TILE_SIZE,
-                            t["y"] * GameSettings.TILE_SIZE,
-                            gm,
+            # --- Load NPCs ---
+            gm.npcs[map_key] = []
+            if saved_data and saved_data.get("npcs"):
+                raw_data = saved_data.get("npcs", [])
+                npc_list = []
+                from src.entities.pc import PCEntity
+
+                for t in raw_data:
+                    # Detect PC by coordinate (hack for save file compatibility)
+                    if map_key == "map.tmx" and t.get("x") == 18 and t.get("y") == 30:
+                        npc_list.append(
+                            PCEntity(
+                                t["x"] * GameSettings.TILE_SIZE,
+                                t["y"] * GameSettings.TILE_SIZE,
+                                gm,
+                            )
                         )
-                    )
-                else:
-                    npc_list.append(Npc.from_dict(t, gm))
+                    else:
+                        npc_list.append(Npc.from_dict(t, gm))
+                gm.npcs[map_key] = npc_list
+            else:
+                gm.npcs[map_key] = npcs_to_add
 
-            gm.npcs[m["path"]] = npc_list
-            for i, n in enumerate(gm.npcs[m["path"]]):
+                # Legacy PC check for 'map.tmx' if not in Entities
+                if map_key == "map.tmx":
+                    from src.entities.pc import PCEntity
+
+                    pc_exists = any(isinstance(n, PCEntity) for n in gm.npcs[map_key])
+                    if not pc_exists:
+                        gm.npcs[map_key].append(
+                            PCEntity(
+                                18 * GameSettings.TILE_SIZE,
+                                30 * GameSettings.TILE_SIZE,
+                                gm,
+                            )
+                        )
+
+            for i, n in enumerate(gm.npcs[map_key]):
                 if not isinstance(n, PCEntity):
                     n.change_skin(i)
+
         Logger.info("Loading Player")
         if data.get("player"):
             gm.player = Player.from_dict(data["player"], gm)

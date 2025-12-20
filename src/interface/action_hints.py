@@ -30,9 +30,9 @@ class ActionHints:
         self.joy_map = {
             "INTERACT": "A",
             "BACK": "B",
-            "SETTING": "START",
+            "SETTING": "BACK",
             "INVENTORY": "Y",
-            "MAP": "L",
+            "MAP": "START",
             "CHAT": "X",
             "CONFIRM": "A",
             "UP": "CONTROLPADUP",

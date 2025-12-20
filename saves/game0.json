@@ -7,6 +7,11 @@
           "x": 24,
           "y": 23,
           "destination": "gym.tmx"
+        },
+        {
+          "x": 22,
+          "y": 31,
+          "destination": "world.tmx"
         }
       ],
       "player": {
@@ -317,8 +322,8 @@
       "path": "world.tmx",
       "teleport": [],
       "player": {
-        "x": 12.0,
-        "y": 12.0
+        "x": 54.0,
+        "y": 54.0
       },
       "enemy_trainers": [],
       "npcs": []
@@ -360,9 +365,9 @@
       {
         "id": 1,
         "name": "Pikachu",
-        "level": 1,
-        "exp": 1,
-        "hp": 30,
+        "level": 25,
+        "exp": 0,
+        "hp": 35,
         "IV": {
           "hp": 15,
           "atk": 15,
@@ -402,6 +407,134 @@
             "acc": 100
           }
         ]
+      },
+      {
+        "id": 2,
+        "name": "Charizard",
+        "level": 36,
+        "exp": 0,
+        "hp": 0,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Blastoise",
+        "level": 32,
+        "exp": 0,
+        "hp": 0,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Venusaur",
+        "level": 30,
+        "exp": 0,
+        "hp": 100,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "nor",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Dragonite",
+        "level": 40,
+        "exp": 0,
+        "hp": 100,
+        "IV": {
+          "hp": 15,
+          "atk": 15,
+          "def": 15,
+          "spa": 15,
+          "spd": 15,
+          "spe": 15
+        },
+        "EV": {
+          "hp": 64,
+          "atk": 64,
+          "def": 64,
+          "spa": 64,
+          "spd": 64,
+          "spe": 64
+        },
+        "move": [
+          {
+            "name": "Quick Attack",
+            "type": "roc",
+            "cat": "Normal Attack",
+            "power": 60,
+            "acc": 95
+          }
+        ]
       }
     ],
     "items": [
@@ -415,7 +548,7 @@
       },
       {
         "name": "Pokeball",
-        "count": 0
+        "count": 9
       },
       {
         "name": "X Attack",
@@ -437,8 +570,7 @@
         "name": "X Speed",
         "count": 2
       }
-    ],
-    "money": 3000
+    ]
   },
   "player_level": 5,
   "fight_count": 0,

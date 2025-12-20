@@ -1,6 +1,7 @@
 from src.utils.combat.combat_logic import CombatLogic
 from src.utils import Logger
 from src.core.gm_helper import gh
+from src.utils.settings import GameSettings
 from typing import Optional
 
 
@@ -16,7 +17,7 @@ class OnlineCombatHandler:
         self.opponent_action: Optional[dict] = None
         self.waiting_for_opponent = False
         self.opponent_data = None
-        
+
         # Register callback
         if gh.online_manager:
             gh.online_manager.register_event_callback(self.handle_event)
@@ -34,7 +35,8 @@ class OnlineCombatHandler:
         success = gh.online_manager.send_event(self.opponent_id, action_data)
 
         if success:
-            Logger.info(f"Sent action to opponent {self.opponent_id}: {action}")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info(f"Sent action to opponent {self.opponent_id}: {action}")
             self.waiting_for_opponent = True
         else:
             Logger.warning("Failed to send action to opponent")
@@ -50,31 +52,34 @@ class OnlineCombatHandler:
             # Inject seed into action if present
             if self.opponent_action and "seed" in event:
                 self.opponent_action["seed"] = event["seed"]
-            
+
             self.opponent_action_received = True
             self.waiting_for_opponent = False
-            Logger.info(f"Received opponent action: {self.opponent_action}")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info(f"Received opponent action: {self.opponent_action}")
 
         elif event_type == "forfeit":
-            Logger.info("Opponent forfeited!")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info("Opponent forfeited!")
             # This will be handled by the combat scene
 
         elif event_type == "battle_end":
             result = event.get("result")
-            Logger.info(f"Battle ended - opponent {result}")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info(f"Battle ended - opponent {result}")
 
         elif event_type == "battle_data":
             self.opponent_data = event.get("data")
-            Logger.info(f"Received opponent data: {self.opponent_data}")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info(f"Received opponent data: {self.opponent_data}")
 
     def send_battle_data(self, data: dict) -> bool:
         """Send initialization data (e.g. monster info)"""
         if not gh.online_manager:
             return False
-            
+
         return gh.online_manager.send_event(
-            self.opponent_id,
-            {"type": "battle_data", "data": data}
+            self.opponent_id, {"type": "battle_data", "data": data}
         )
 
     def is_ready_to_resolve(self) -> bool:

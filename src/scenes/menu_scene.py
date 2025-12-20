@@ -246,10 +246,26 @@ class MenuScene(Scene):
                 self.enter_username_entry(index)
 
     def finish_create_game(self):
+        """Show starter selection before creating game."""
+        from src.interface.overlay_starter import StarterOverlay
+
+        # Open starter selection overlay
+        self.starter_overlay = StarterOverlay(on_select=self.on_starter_selected)
+        self.starter_overlay.open()
+        self.state = "STARTER_SELECT"
+
+    def on_starter_selected(self, starter_id: int):
+        """Handle starter selection and create the game."""
         from src.core.gm_helper import gh
+        from src.utils.generate import generate_monster
 
         name = self.username_input.strip() or "Player"
         if gh.new_game(self.target_slot_index, name):
+            # Replace the auto-generated starter with the selected one
+            selected_starter = generate_monster(starter_id, 5)
+            gh.gm.bag._monsters_data = [selected_starter]
+            gh.gm.bag.update_bag()
+            gh.save()  # Save immediately with the chosen starter
             scene_manager.change_scene("game")
 
     def delete_slot(self, index: int):
@@ -341,6 +357,13 @@ class MenuScene(Scene):
             self.setting_overlay.update(dt)
             if not self.setting_overlay.is_open:
                 self.state = "MENU"
+
+        elif self.state == "STARTER_SELECT":
+            if hasattr(self, "starter_overlay"):
+                self.starter_overlay.update(dt)
+                if not self.starter_overlay.is_open:
+                    # Selection made, state change handled in callback
+                    pass
 
     def join_game(self):
         # We don't connect immediately. We go to slot select first.
@@ -457,6 +480,10 @@ class MenuScene(Scene):
 
         elif self.state == "SETTINGS":
             self.setting_overlay.draw(screen)
+
+        elif self.state == "STARTER_SELECT":
+            if hasattr(self, "starter_overlay"):
+                self.starter_overlay.draw(screen)
 
     def draw_label(self, screen, text, rect):
         # Draw text to the right or centered?

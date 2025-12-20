@@ -59,9 +59,14 @@ class SettingOverlay(Overlay):
         self.add_active(back_button)
 
         # --- Audio Settings ---
-        current_y = top_y + self.bgy.per(15)
-        # Dynamic spacing based on available height
+        current_y = top_y + self.bgy.per(10)
         spacing = self.bgy.per(8)
+
+        # Header
+        audio_header = Text("- AUDIO -", 28, "Gold")
+        audio_header.rect.center = (cx, current_y)
+        self.add_passive(audio_header)
+        current_y += self.bgy.per(8)
 
         # Mute Toggle
         mute_label = Text("Mute Audio", 24, "azure")
@@ -156,6 +161,12 @@ class SettingOverlay(Overlay):
         self.add_active(sfx_slider)
 
         current_y += spacing * 1.5
+
+        # --- Gameplay Settings ---
+        game_header = Text("- GAMEPLAY -", 28, "Gold")
+        game_header.rect.center = (cx, current_y)
+        self.add_passive(game_header)
+        current_y += self.bgy.per(8)
 
         # --- Hitbox Toggle ---
         hitbox_label = Text("Show Hitboxes", 24, "azure")
@@ -372,6 +383,7 @@ class Inventory(Overlay):
         self.drag_pos = None
         self.scroll_y = 0.0
         self.selected_index = -1
+        self.hovered_item_idx = None  # For item tooltip
         self._build_ui()
 
     def _build_ui(self):
@@ -698,8 +710,17 @@ class Inventory(Overlay):
                 self.scroll_y = max(0, min(self.max_scroll, self.scroll_y))
                 self._update_slot_positions()
 
-            # Drag and Drop Logic
+            # Hover detection for tooltips
             mouse_pos = input_manager.mouse_pos
+            self.hovered_item_idx = None
+            for slot_data, idx in self.item_slots:
+                mbg = slot_data["mbg"]
+                if mbg in self.active_components:
+                    if mbg.hitbox.collidepoint(mouse_pos):
+                        self.hovered_item_idx = idx
+                        break
+
+            # Drag and Drop Logic
 
             # Start Drag
             if input_manager.mouse_pressed(1):
@@ -813,3 +834,85 @@ class Inventory(Overlay):
                     else temp_sprite.image.get_rect(topleft=input_manager.mouse_pos)
                 )
                 screen.blit(temp_sprite.image, rect)
+
+            # Draw item tooltip on hover
+            if self.hovered_item_idx is not None and self.hovered_item_idx < len(
+                gh.gm.bag._items_data
+            ):
+                item = gh.gm.bag._items_data[self.hovered_item_idx]
+                item_name = item["name"]
+                static_data = pokeitems.items.get(item_name, {})
+
+                # Build tooltip text from item properties
+                tooltip_lines = [item_name]
+
+                if "healing" in static_data:
+                    if static_data.get("revive"):
+                        tooltip_lines.append(
+                            f"Revives and heals {static_data['healing']} HP"
+                        )
+                    else:
+                        tooltip_lines.append(f"Heals {static_data['healing']} HP")
+
+                if "pp_restore" in static_data:
+                    tooltip_lines.append(f"Restores {static_data['pp_restore']} PP")
+
+                if "sp_restore" in static_data:
+                    tooltip_lines.append(f"Restores {static_data['sp_restore']} SP")
+
+                if "catch_rate" in static_data:
+                    rate = static_data["catch_rate"]
+                    tooltip_lines.append(f"Catch rate: {rate}x")
+
+                if "stat_boost" in static_data:
+                    stat = static_data["stat_boost"].upper()
+                    amt = static_data.get("boost_amount", 1)
+                    tooltip_lines.append(f"Boosts {stat} by {amt}")
+
+                if static_data.get("is_evolution_stone"):
+                    tooltip_lines.append("Triggers evolution")
+
+                if "price" in static_data:
+                    tooltip_lines.append(f"Price: {static_data['price']}G")
+
+                # Render tooltip
+                font = resource_manager.get_font(None, 16)
+                padding = 8
+                line_height = 18
+
+                # Calculate tooltip size
+                max_width = 0
+                for line in tooltip_lines:
+                    text_surf = font.render(line, True, (255, 255, 255))
+                    max_width = max(max_width, text_surf.get_width())
+
+                tooltip_width = max_width + padding * 2
+                tooltip_height = len(tooltip_lines) * line_height + padding * 2
+
+                # Position tooltip near mouse, but keep on screen
+                mouse_pos = input_manager.mouse_pos
+                tooltip_x = mouse_pos[0] + 15
+                tooltip_y = mouse_pos[1] + 10
+
+                # Keep on screen
+                if tooltip_x + tooltip_width > GameSettings.SCREEN_WIDTH:
+                    tooltip_x = mouse_pos[0] - tooltip_width - 5
+                if tooltip_y + tooltip_height > GameSettings.SCREEN_HEIGHT:
+                    tooltip_y = mouse_pos[1] - tooltip_height - 5
+
+                # Draw tooltip background
+                tooltip_rect = pg.Rect(
+                    tooltip_x, tooltip_y, tooltip_width, tooltip_height
+                )
+                pg.draw.rect(screen, (40, 40, 40), tooltip_rect)
+                pg.draw.rect(screen, (100, 100, 100), tooltip_rect, 1)
+
+                # Draw tooltip text
+                for i, line in enumerate(tooltip_lines):
+                    text_surf = font.render(
+                        line, True, (255, 255, 255) if i > 0 else (255, 220, 100)
+                    )
+                    screen.blit(
+                        text_surf,
+                        (tooltip_x + padding, tooltip_y + padding + i * line_height),
+                    )

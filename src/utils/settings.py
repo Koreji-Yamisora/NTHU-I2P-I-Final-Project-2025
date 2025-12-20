@@ -21,7 +21,7 @@ class Settings:
     SCREEN_WIDTH: int = 1710
     SCREEN_HEIGHT: int = 962
     FPS: int = 60
-    TITLE: str = "A game"
+    TITLE: str = "A Game"
     DEBUG: bool = True
     TILE_SIZE: int = 64
     DRAW_HITBOXES: bool = True
@@ -30,6 +30,7 @@ class Settings:
     SFX_VOLUME: float = 0.5
     AUDIO_MUTE: bool = True
     IS_ONLINE: bool = False
+    ONLINE_LOGGING: bool = False
     ONLINE_SERVER_URL: str = "http://localhost:8989"
     AUTOSAVE: int = 10
 

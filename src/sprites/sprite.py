@@ -211,8 +211,25 @@ class Text:
         """Draw."""
         screen.blit(self.text, self.rect)
 
-    def change_text(self, text: str, pos: str = "topleft"):
+    @property
+    def image(self) -> pg.Surface:
+        """Get the text surface (alias for compatibility)."""
+        return self.text
+
+    @image.setter
+    def image(self, value: pg.Surface):
+        """Set the text surface."""
+        self.text = value
+
+    def change_text(
+        self,
+        text: str,
+        pos: str = "topleft",
+        color: (tuple[int, int, int] | str) = None,
+    ):
         """Change Text."""
+        if color:
+            self.color = color
         self.font = resource_manager.get_font(None, self.size)
         self.text = self.font.render(text, True, self.color)
         rect = self.text.get_rect()

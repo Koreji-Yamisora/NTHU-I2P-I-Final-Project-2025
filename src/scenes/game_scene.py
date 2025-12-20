@@ -13,6 +13,31 @@ from src.interface.components import Overlay
 from src.core.gm_helper import gh
 from src.interface.overlay_chat import ChatOverlay
 from src.interface.overlay_evolution import EvolutionOverlay
+from src.sprites import Text
+
+
+class PvPBattleContext:
+    """Context for PvP Battles"""
+
+    def __init__(self, opponent_id: int):
+        self.opponent_id = opponent_id
+        # Placeholder for opponent's monsters - will be synced during battle
+        self.monsters = [
+            {
+                "id": 1,  # Default pokemon
+                "name": "Opponent",
+                "level": 5,
+                "hp": 100,
+                "chp": 100,
+                "atk": 10,
+                "def": 10,
+                "spe": 10,
+                "move": [],
+                # Add missing visual fields
+                "sprite_path": "pokemon/1.png",
+                "sprite_back_path": "pokemon/back/1.png",
+            }
+        ]
 
 
 class GameScene(Scene):
@@ -22,6 +47,7 @@ class GameScene(Scene):
     sprite_online: Sprite
     menu_button: Button
     setting_overlay: SettingOverlay
+    debug_text: Text
 
     def __init__(self):
         super().__init__()
@@ -39,6 +65,7 @@ class GameScene(Scene):
             (GameSettings.TILE_SIZE, GameSettings.TILE_SIZE),
             loop=0.5,
         )
+        self.debug_text = Text("Debug", 20, "White")
         sw = crd(GameSettings.SCREEN_WIDTH)
         sh = crd(GameSettings.SCREEN_HEIGHT)
         self.menu_button = Button(
@@ -108,15 +135,102 @@ class GameScene(Scene):
         sw = crd(GameSettings.SCREEN_WIDTH)
         sh = crd(GameSettings.SCREEN_HEIGHT)
         if gh.gm:
+            # Reduce size to 70% width
+            target_w = sw.per(70)
+            target_h = target_w // gh.gm.current_map.ratio
+
+            # Clamp height to screen height - margin
+            if target_h > sh.per(90):
+                target_h = sh.per(90)
+                target_w = int(target_h * gh.gm.current_map.ratio)
+
             self.minimap_frame = Sprite(
                 "UI/raw/UI_Flat_Frame01a.png",
-                (sw, sw // gh.gm.current_map.ratio),
+                (target_w, target_h),
                 nine_grid_margins=(45, 45, 45, 45),
             )
             self.minimap_frame.image = color.recol(
                 self.minimap_frame.image, (120, 120, 120)
             )
+            # Center it but shifted left slightly to make room for buttons?
+            # Or just center and put buttons on right overlay
             self.minimap_frame.rect.center = sw // 2, sh // 2
+
+            # Destination Buttons
+            self.setup_dest_buttons(sw, sh)
+
+    def setup_dest_buttons(self, sw, sh):
+        """Setup destination buttons for large map."""
+        # Always refresh buttons to ensure updates apply
+        if hasattr(self, "dest_buttons"):
+            self.dest_buttons.clear()
+
+        self.dest_buttons = []
+
+        # Panel Background for buttons
+        # Force position to be on the right side of the screen
+        sw = crd(GameSettings.SCREEN_WIDTH)
+        panel_x = sw - 140  # Fixed position from right
+        panel_y = 100
+
+        # Define destinations (Name, x, y)
+        dests = [
+            ("Home", 18, 29),  # Quest Destination
+        ]
+
+        for i, (name, tx, ty) in enumerate(dests):
+            # Define callback with logging wrapper
+            def make_callback(target_x, target_y):
+                def callback():
+                    Logger.info(
+                        f"Button '{name}' clicked! Attempting to walk to ({target_x}, {target_y})"
+                    )
+                    self.go_to_dest(target_x, target_y)
+
+                return callback
+
+            btn = Button(
+                "UI/raw/UI_Flat_Frame01a.png",
+                "UI/raw/UI_Flat_Frame02a.png",
+                panel_x,
+                panel_y + (i * 60),
+                120,
+                50,
+                make_callback(tx, ty),  # Use wrapped callback
+                nine_grid_margins=(45, 45, 45, 45),
+            )
+            self.dest_buttons.append(btn)
+
+            # Create text for button
+            from src.sprites import Text
+
+            t_obj = Text(name, 20, "Black")
+            t_obj.rect.center = btn.hitbox.center
+            self.dest_buttons.append(t_obj)
+
+    def go_to_dest(self, tx, ty):
+        """Navigate to destination."""
+        Logger.info(f"go_to_dest called with tx={tx}, ty={ty}")
+        if gh.gm and gh.gm.player:
+            start_pos = Position(
+                int(gh.gm.player.position.x // GameSettings.TILE_SIZE),
+                int(gh.gm.player.position.y // GameSettings.TILE_SIZE),
+            )
+            Logger.info(
+                f"Pathfinding from ({start_pos.x}, {start_pos.y}) to ({tx}, {ty})"
+            )
+
+            # Clamp or check bounds in bfs
+            path = self.bfs(start_pos, Position(tx, ty))
+            if path:
+                Logger.info(f"Auto-pathing to {tx}, {ty}. Path length: {len(path)}")
+                gh.gm.player.set_path(path)
+                # Close map? or keep open? Keep open
+            else:
+                sound_manager.play_se("notichange.ogg")  # Error sound
+                Logger.info("Cannot reach destination - No path found")
+        else:
+            Logger.error("GameManager or Player is None!")
 
     @override
     def enter(self) -> None:
@@ -163,10 +277,51 @@ class GameScene(Scene):
                 gh.gm.player.update(dt)
                 for enemy in gh.gm.current_enemy_trainers:
                     if enemy.detected:
-                        gh.gm.current_fight = enemy
+                        if gh.gm.current_fight is None:
+                            gh.gm.current_fight = enemy
+                    elif gh.gm.current_fight == enemy:
+                        gh.gm.current_fight = None
                     enemy.update(dt)
                 for npc in gh.gm.current_npcs:
                     npc.update(dt)
+
+                # DEBUG: Unstuck / Teleport to Spawn
+                keys = pg.key.get_pressed()
+                if keys[pg.K_p]:
+                    Logger.info("Attempting to teleport to world.tmx spawn...")
+                    target_map_key = "world.tmx"
+
+                    if target_map_key in gh.gm.maps:
+                        target_map = gh.gm.maps[target_map_key]
+                        best_spawn = None
+                        max_score = -1
+
+                        # Search objects in target map
+                        if hasattr(target_map, "tmxdata"):
+                            for obj in target_map.tmxdata.objects:
+                                if obj.name and "spawn" in obj.name.lower():
+                                    score = obj.x + obj.y
+                                    if score > max_score:
+                                        max_score = score
+                                        best_spawn = obj
+
+                        if best_spawn:
+                            Logger.info(
+                                f"Found spawn '{best_spawn.name}' at ({best_spawn.x}, {best_spawn.y}). Switching..."
+                            )
+                            # Create generic Position (ensure imports or use gh.gm.player.position type)
+                            # Actually Position is in utils
+
+                            pos = Position(best_spawn.x, best_spawn.y)
+                            gh.gm.switch_map(target_map_key, spawn_pos=pos)
+                        else:
+                            Logger.warning(
+                                f"No 'spawn' object found in {target_map_key}"
+                            )
+                    else:
+                        Logger.warning(
+                            f"Map '{target_map_key}' not found in GameManager"
+                        )
                 self.shop_on = any(
                     (hasattr(npc, "shop_ov") and npc.shop_ov.is_open)
                     or (hasattr(npc, "pc_overlay") and npc.pc_overlay.is_open)
@@ -177,11 +332,21 @@ class GameScene(Scene):
                     gh.gm.player.bush_enter = False
             gh.gm.bag.update(dt)
 
+            # Update Debug Text
+            if gh.gm.player:
+                p = gh.gm.player.position
+                tx = int(p.x // GameSettings.TILE_SIZE)
+                ty = int(p.y // GameSettings.TILE_SIZE)
+                self.debug_text.change_text(
+                    f"Pos: ({p.x:.1f}, {p.y:.1f}) Tile: ({tx}, {ty})", color="White"
+                )
+
             # DIAGNOSTIC: Check online state
             if self.online_manager:
                 pass
             else:
-                Logger.info("[ONLINE DEBUG] online_manager is None!")
+                if GameSettings.ONLINE_LOGGING:
+                    Logger.info("[ONLINE DEBUG] online_manager is None!")
 
             if gh.gm.player and self.online_manager:
                 _ = self.online_manager.update(
@@ -193,10 +358,12 @@ class GameScene(Scene):
                     gh.gm.player.is_moving,
                 )
                 self.update_online_players(dt)
+            if hasattr(gh.gm.current_map, "update"):
+                gh.gm.current_map.update(dt)
             # Update Day/Night Cycle
-            if (
-                hasattr(self, "light_overlay")
-                and gh.gm.current_map.path_name == "map.tmx"
+            if hasattr(self, "light_overlay") and gh.gm.current_map.path_name in (
+                "map.tmx",
+                "world.tmx",
             ):
                 self.light_overlay.update(dt)
 
@@ -204,59 +371,79 @@ class GameScene(Scene):
             if hasattr(self, "battle_request_ov") and self.battle_request_ov.is_open:
                 self.battle_request_ov.update(dt)
 
-            # INPUT HANDLING
-            # Toggle Inventory
-            if input_manager.key_pressed(pg.K_b) or input_manager.button_pressed(
-                3
-            ):  # Y button
-                if not self.inventory.is_open:
-                    self.inventory.open()
-                else:
-                    self.inventory.close()
+            # INPUT HANDLING - Only process if chat is NOT open
+            if not self.chat_overlay.is_open:
+                # Toggle Inventory
+                if input_manager.key_pressed(pg.K_b) or input_manager.button_pressed(
+                    3
+                ):  # Y button
+                    if not self.inventory.is_open:
+                        self.inventory.open()
+                    else:
+                        self.inventory.close()
 
-            # Toggle Map (Minimap Size)
-            if input_manager.key_pressed(pg.K_m) or input_manager.button_pressed(
-                4
-            ):  # L1
-                if self.map_on:
-                    # Toggle between small and large
-                    if hasattr(self, "minimap_frame"):
-                        if self.minimap_frame.rect.width < GameSettings.SCREEN_WIDTH:
-                            self.large_map()
-                        else:
-                            self.small_map()
+                # Toggle Map (Minimap Size)
+                if input_manager.key_pressed(pg.K_m) or input_manager.button_pressed(
+                    4
+                ):  # L1
+                    if self.map_on:
+                        # Toggle between small and large
+                        if hasattr(self, "minimap_frame"):
+                            if (
+                                self.minimap_frame.rect.width
+                                < GameSettings.SCREEN_WIDTH
+                            ):
+                                self.large_map()
+                            else:
+                                self.small_map()
 
-            # Settings / Exit Overlay
-            if input_manager.key_pressed(pg.K_ESCAPE) or input_manager.button_pressed(
-                6
-            ):  # Select/Back
-                if self.inventory.is_open:
-                    self.inventory.close()
-                elif self.setting_overlay.is_open:
-                    self.setting_overlay.close()
-                elif self.chat_overlay.is_open:
-                    self.chat_overlay.close()
-                # Close other overlays if open
-                elif hasattr(self, "shop_on") and self.shop_on:
-                    # Close shop logic if possible (usually handled by NPC interaction end)
+                # Settings / Exit Overlay
+                if input_manager.key_pressed(
+                    pg.K_ESCAPE
+                ) or input_manager.button_pressed(6):  # Select/Back
+                    # Check if any overlay is open - if so, close it instead of opening settings
+                    any_overlay_open = (
+                        self.inventory.is_open
+                        or self.setting_overlay.is_open
+                        or self.shop_on
+                        or self.evolution_overlay.is_open
+                        or (
+                            hasattr(self, "battle_request_ov")
+                            and self.battle_request_ov.is_open
+                        )
+                    )
+
+                    if self.inventory.is_open:
+                        self.inventory.close()
+                    elif self.setting_overlay.is_open:
+                        self.setting_overlay.close()
+                    elif self.shop_on:
+                        # Close any open shop/PC overlays
+                        for npc in gh.gm.current_npcs:
+                            if hasattr(npc, "shop_ov") and npc.shop_ov.is_open:
+                                npc.shop_ov.close()
+                            if hasattr(npc, "pc_overlay") and npc.pc_overlay.is_open:
+                                npc.pc_overlay.close()
+                    elif (
+                        hasattr(self, "battle_request_ov")
+                        and self.battle_request_ov.is_open
+                    ):
+                        self.battle_request_ov.close()
+                    elif not any_overlay_open:
+                        # Only open settings if nothing else is open
+                        self.setting_overlay.open()
+
+                # Interact / Coop Challenge
+                if input_manager.key_pressed(
+                    pg.K_SPACE
+                ) or input_manager.button_pressed(0):  # A button
+                    # Interact is usually handled by Player update checking inputs,
+                    # but for coop challenge or explicit interaction we might need checks here.
                     pass
-                else:
-                    self.setting_overlay.open()
-
-            # Chat
-            if input_manager.key_pressed(pg.K_t) or input_manager.key_pressed(
-                pg.K_SLASH
-            ):
-                if not self.chat_overlay.is_open:
-                    self.chat_overlay.open()
-
-            # Interact / Coop Challenge
-            if input_manager.key_pressed(pg.K_SPACE) or input_manager.button_pressed(
-                0
-            ):  # A button
-                # Interact is usually handled by Player update checking inputs,
-                # but for coop challenge or explicit interaction we might need checks here.
-                pass
+            else:
+                # Chat is open - only handle Escape to close chat
+                if input_manager.key_pressed(pg.K_ESCAPE):
+                    self.chat_overlay.close()
 
         if gh.gm:
             # Pass controller inputs to player movement if needed
@@ -299,37 +486,45 @@ class GameScene(Scene):
         if hasattr(self, "battle_request_ov") and self.battle_request_ov.is_open:
             self.battle_request_ov.update(dt)
 
-        if GameSettings.IS_ONLINE:
-            t_pressed = input_manager.key_pressed(pg.K_t)
-            slash_pressed = input_manager.key_pressed(pg.K_SLASH)
+        # Update Destination Buttons (Large Map Only)
+        any_button_hovered = False
+        if self.map_on and self.mt and hasattr(self, "dest_buttons"):
+            for btn in self.dest_buttons:
+                if hasattr(btn, "update"):
+                    btn.update(dt)
+                    if getattr(btn, "is_hovered", False):
+                        any_button_hovered = True
 
-            if (t_pressed or slash_pressed) and not self.chat_overlay.is_open:
-                # Only open if no other overlay is open?
-                if not (
-                    self.setting_overlay.is_open
-                    or self.inventory.is_open
-                    or self.shop_on
-                    or self.evolution_overlay.is_open
-                ):
-                    initial = "/" if slash_pressed else ""
-                    self.chat_overlay.open(initial_text=initial)
+        # Chat input handling (works offline too for commands)
+        t_pressed = input_manager.key_pressed(pg.K_t)
+        slash_pressed = input_manager.key_pressed(pg.K_SLASH)
 
-            if self.chat_overlay.is_open:
-                self.chat_overlay.update(dt)
+        if (t_pressed or slash_pressed) and not self.chat_overlay.is_open:
+            # Only open if no other overlay is open?
+            if not (
+                self.setting_overlay.is_open
+                or self.inventory.is_open
+                or self.shop_on
+                or self.evolution_overlay.is_open
+            ):
+                initial = "/" if slash_pressed else ""
+                self.chat_overlay.open(initial_text=initial)
 
-        if (
-            input_manager.key_pressed(pg.K_ESCAPE)
-            and not self.inventory.is_open
-            and not self.chat_overlay.is_open
-        ):
-            input_manager.reset()
-            self.setting_overlay.open()
+        if self.chat_overlay.is_open:
+            self.chat_overlay.update(dt)
+
+        # (ESC handling moved to consolidated block above - removed duplicate)
         if input_manager.key_pressed(pg.K_m):
             input_manager.reset()
             for overlay in Overlay._instances:
                 overlay.close()
             self.map_toggle()
-        if self.map_on and self.mt and input_manager.mouse_pressed(1):
+        if (
+            self.map_on
+            and self.mt
+            and input_manager.mouse_pressed(1)
+            and not any_button_hovered
+        ):
             self.tile_pos = self.get_tile_from_mouse()
             if self.tile_pos:
                 Logger.info(f"Clicked Tile Position: {self.tile_pos}")
@@ -354,7 +549,8 @@ class GameScene(Scene):
         players = self.online_manager.get_list_players()
 
         if players:
-            Logger.info(f"[ONLINE] Found {len(players)} online players")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info(f"[ONLINE] Found {len(players)} online players")
 
         current_map = gh.gm.current_map.path_name if gh.gm else ""
 
@@ -362,7 +558,8 @@ class GameScene(Scene):
         # Initialize if not exists
         if not hasattr(self, "online_animations"):
             self.online_animations = {}
-            Logger.info("[ONLINE] Initialized online_animations dict")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info("[ONLINE] Initialized online_animations dict")
 
         # Clean up old players
         active_ids = set()
@@ -378,14 +575,16 @@ class GameScene(Scene):
 
         for p in players:
             if p["map"] != current_map:
-                Logger.info(
-                    f"[ONLINE] Skipping player {p['id']} - different map ({p['map']} vs {current_map})"
-                )
+                if GameSettings.ONLINE_LOGGING:
+                    Logger.info(
+                        f"[ONLINE] Skipping player {p['id']} - different map ({p['map']} vs {current_map})"
+                    )
                 continue
 
-            Logger.info(
-                f"[ONLINE] Processing player {p['id']} at ({p['x']}, {p['y']}) on map {p['map']}"
-            )
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info(
+                    f"[ONLINE] Processing player {p['id']} at ({p['x']}, {p['y']}) on map {p['map']}"
+                )
 
             pid = p["id"]
             skin_idx = p.get("skin", 0)
@@ -486,11 +685,13 @@ class GameScene(Scene):
 
     def handle_online_event(self, event: dict):
         ev_type = event.get("type")
-        Logger.info(f"[PvP DEBUG] Received event: {event}")
+        if GameSettings.ONLINE_LOGGING:
+            Logger.info(f"[PvP DEBUG] Received event: {event}")
 
         if ev_type == "battle_request":
             sender = event.get("from_id")
-            Logger.info(f"[PvP DEBUG] Processing battle request from {sender}")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info(f"[PvP DEBUG] Processing battle request from {sender}")
             # Open Overlay
             from src.interface.overlay_battle_request import BattleRequestOverlay
 
@@ -499,16 +700,18 @@ class GameScene(Scene):
                     sender, lambda sid: self.accept_battle(sid), lambda: None
                 )
                 self.battle_request_ov.open()
-                Logger.info(
-                    f"[PvP DEBUG] Overlay opened: {self.battle_request_ov.is_open}"
-                )
+                if GameSettings.ONLINE_LOGGING:
+                    Logger.info(
+                        f"[PvP DEBUG] Overlay opened: {self.battle_request_ov.is_open}"
+                    )
             except Exception as e:
                 Logger.error(f"[PvP DEBUG] Failed to open overlay: {e}")
 
         elif ev_type == "battle_accept":
             # Start Battle
             opponent_id = event.get("from_id")
-            Logger.info(f"Battle Accepted by {opponent_id}")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info(f"Battle Accepted by {opponent_id}")
             # Transition to PvP scene
             self.start_pvp_battle(opponent_id)
 
@@ -520,70 +723,56 @@ class GameScene(Scene):
                 sender_id,
                 {"type": "battle_accept", "from_id": self.online_manager.player_id},
             )
-            Logger.info("Sent battle acceptance, starting PvP...")
+            if GameSettings.ONLINE_LOGGING:
+                Logger.info("Sent battle acceptance, starting PvP...")
             # Start battle
             self.start_pvp_battle(sender_id)
 
     def start_pvp_battle(self, opponent_id: int):
         """Initialize and start a PvP battle"""
-        from src.core.services import scene_manager
-
-        # Create a temporary battle context object
-        class PvPBattleContext:
-            def __init__(self, opponent_id: int):
-                self.opponent_id = opponent_id
-                # Placeholder for opponent's monsters - will be synced during battle
-                self.monsters = [
-                    {
-                        "id": 1,  # Default pokemon
-                        "name": "Opponent",
-                        "level": 5,
-                        "hp": 100,
-                        "chp": 100,
-                        "atk": 10,
-                        "def": 10,
-                        "spe": 10,
-                        "move": [],
-                        # Add missing visual fields
-                        "sprite_path": "pokemon/1.png",
-                        "sprite_back_path": "pokemon/back/1.png",
-                    }
-                ]
-
         # Set current fight to PvP context
         gh.gm.current_fight = PvPBattleContext(opponent_id)
 
-        Logger.info(f"Starting PvP battle with opponent {opponent_id}")
+        if GameSettings.ONLINE_LOGGING:
+            Logger.info(f"Starting PvP battle with opponent {opponent_id}")
         scene_manager.change_scene("pvp")
 
     # Update Day/Night Cycle
     def _update_lighting(self, dt):
-        if hasattr(self, "light_overlay") and gh.gm.current_map.path_name == "map.tmx":
+        if hasattr(self, "light_overlay") and gh.gm.current_map.path_name in (
+            "map.tmx",
+            "world.tmx",
+        ):
             self.light_overlay.update(dt)
-        if input_manager.key_pressed(pg.K_ESCAPE) and not self.inventory.is_open:
-            input_manager.reset()
-            self.setting_overlay.open()
+        # (ESC handling consolidated in main update() - removed duplicate)
         if input_manager.key_pressed(pg.K_m):
             input_manager.reset()
             for overlay in Overlay._instances:
                 overlay.close()
             self.map_toggle()
-        if self.map_on and self.mt and input_manager.mouse_pressed(1):
-            self.tile_pos = self.get_tile_from_mouse()
-            if self.tile_pos:
-                Logger.info(f"Clicked Tile Position: {self.tile_pos}")
-                if gh.gm and gh.gm.player:
-                    start_pos = Position(
-                        int(gh.gm.player.position.x // GameSettings.TILE_SIZE),
-                        int(gh.gm.player.position.y // GameSettings.TILE_SIZE),
-                    )
-                    path = self.bfs(start_pos, self.tile_pos)
-                    if path:
-                        Logger.info(f"Path found: {len(path)} steps")
-                        gh.gm.player.set_path(path)
-                        self.map_toggle()
-                    else:
-                        Logger.info("No path found")
+        if self.map_on and self.mt:
+            # Update Destination Buttons
+            if hasattr(self, "dest_buttons"):
+                for btn in self.dest_buttons:
+                    if hasattr(btn, "update"):
+                        btn.update(dt)
+
+            if input_manager.mouse_pressed(1):
+                self.tile_pos = self.get_tile_from_mouse()
+                if self.tile_pos:
+                    Logger.info(f"Clicked Tile Position: {self.tile_pos}")
+                    if gh.gm and gh.gm.player:
+                        start_pos = Position(
+                            int(gh.gm.player.position.x // GameSettings.TILE_SIZE),
+                            int(gh.gm.player.position.y // GameSettings.TILE_SIZE),
+                        )
+                        path = self.bfs(start_pos, self.tile_pos)
+                        if path:
+                            Logger.info(f"Path found: {len(path)} steps")
+                            gh.gm.player.set_path(path)
+                            self.map_toggle()
+                        else:
+                            Logger.info("No path found")
 
     def bfs(self, start: Position, end: Position) -> list[Position] | None:
         """Bfs."""
@@ -674,32 +863,94 @@ class GameScene(Scene):
     def draw(self, screen: pg.Surface):
         """Draw."""
         if gh.gm:
+            # Draw Ground Layer
             if gh.gm.player:
                 camera = gh.gm.player.camera
                 gh.gm.current_map.draw(screen, camera)
-                gh.gm.player.draw(screen, camera)
             else:
                 camera = PositionCamera(0, 0)
                 gh.gm.current_map.draw(screen, camera)
-            for enemy in gh.gm.current_enemy_trainers:
-                enemy.draw(screen, camera)
-            for npc in gh.gm.current_npcs:
-                npc.draw(screen, camera)
+
+            # Collect all renderable objects for Y-Sorting
+            render_queue = []
+
+            # 1. Map Sortable Objects (Trees, Houses, etc.)
+            if hasattr(gh.gm.current_map, "sortable_objects"):
+                render_queue.extend(gh.gm.current_map.sortable_objects)
+
+            # 2. Player
+            if gh.gm.player:
+                render_queue.append(gh.gm.player)
+
+            # 3. Enemies
+            render_queue.extend(gh.gm.current_enemy_trainers)
+
+            # 4. NPCs
+            render_queue.extend(gh.gm.current_npcs)
+
+            # 5. Online Players
+            if hasattr(self, "online_animations"):
+                for pid, anim_data in self.online_animations.items():
+                    # Create a wrapper or ensure anim has rect and draw
+                    # Animation class has rect and draw.
+                    render_queue.append(anim_data["anim"])
+
+            # Sort by bottom Y coordinate
+            # We use a lambda that checks if the object has a 'rect' attribute
+            # Most entities have 'animation.rect', but we might need to unify this.
+            # Player/Enemy/NPC are Entities, and Entity has self.animation.rect, but also self.draw uses self.animation
+            # Wait, Entity.draw calls self.animation.draw.
+            # But render_queue needs uniform objects or we need to handle difference.
+
+            # Entity class has 'animation' attribute which has 'rect'.
+            # SortableItem has 'rect'.
+            # Online players are 'Animation' objects (from my previous code reading of update_online_players).
+
+            # Let's verify Entity structure.
+            # Entity has 'animation' field. It does NOT have 'rect' directly exposed usually?
+            # Let's check Entity.py again.
+            # Entity: self.animation = Animation(...)
+            # It does not seem to expose self.rect.
+
+            # Use a wrapper or helper to get sort key?
+            def get_sort_key(obj):
+                # 1. Entity (Player, NPC, Enemy) - has 'animation' attribute
+                if hasattr(obj, "animation") and hasattr(obj.animation, "rect"):
+                    return obj.animation.rect.centery
+                # 2. Online Players - are 'Animation' instances
+                # We identify them by checking for specific Animation attributes
+                elif hasattr(obj, "cur_row") and hasattr(obj, "rect"):
+                    return obj.rect.centery
+                # 3. Map Objects (Trees, Bushes) - default Sortable Objects
+                elif hasattr(obj, "rect"):
+                    return obj.rect.bottom
+                return 0
+
+            render_queue.sort(key=get_sort_key)
+
+            # Draw all
+            for obj in render_queue:
+                obj.draw(screen, camera)
 
             # Draw Day/Night Cycle (Darkness + Lights)
             # Draw after entities but before UI
-            if (
-                hasattr(self, "light_overlay")
-                and gh.gm.current_map.path_name == "map.tmx"
+            if hasattr(self, "light_overlay") and gh.gm.current_map.path_name in (
+                "map.tmx",
+                "world.tmx",
             ):
                 self.light_overlay.draw(screen, camera)
 
+            # Draw NPC/PC Overlays after lighting (so they are bright)
             # Draw NPC/PC Overlays after lighting (so they are bright)
             for npc in gh.gm.current_npcs:
                 if hasattr(npc, "shop_ov") and npc.shop_ov.is_open:
                     npc.shop_ov.draw(screen)
                 if hasattr(npc, "pc_overlay") and npc.pc_overlay.is_open:
                     npc.pc_overlay.draw(screen)
+
+            # Draw Debug Text
+            if hasattr(self, "debug_text"):
+                self.debug_text.draw(screen)
 
         if self.setting_overlay.is_open or self.inventory.is_open or self.shop_on:
             pass
@@ -711,8 +962,8 @@ class GameScene(Scene):
         if self.inventory.is_open:
             self.inventory.draw(screen)
 
-        if GameSettings.IS_ONLINE:
-            self.chat_overlay.draw(screen)
+        # Draw chat overlay (works offline too)
+        self.chat_overlay.draw(screen)
 
         if self.evolution_overlay.is_open:
             self.evolution_overlay.draw(screen)
@@ -724,6 +975,13 @@ class GameScene(Scene):
             or self.evolution_overlay.is_open
         ):
             self.draw_minimap(screen)
+
+            # Draw Destination Buttons (Large Map Only)
+            if self.mt and hasattr(self, "dest_buttons"):
+                for btn in self.dest_buttons:
+                    if hasattr(btn, "draw"):
+                        btn.draw(screen)
+
             if hasattr(self, "online_animations"):
                 cam = gh.gm.player.camera
                 count = len(self.online_animations)
@@ -820,6 +1078,16 @@ class GameScene(Scene):
                     ts * scale_y,
                 )
                 pg.draw.rect(screen, color, r)
+
+            # Draw Path
+            if gh.gm.player and gh.gm.player.path:
+                for tile_pos in gh.gm.player.path:
+                    # Convert tile pos to world pixel pos for draw_on_map
+                    world_pixel_pos = Position(
+                        tile_pos.x * GameSettings.TILE_SIZE,
+                        tile_pos.y * GameSettings.TILE_SIZE,
+                    )
+                    draw_on_map((0, 191, 255), world_pixel_pos)  # Deep Sky Blue
 
             # Player (Green)
             draw_on_map("GREEN", gh.gm.player.position)

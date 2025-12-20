@@ -1,6 +1,5 @@
 import pygame as pg
-import json
-from src.utils import GameSettings, crd, Logger
+from src.utils import crd, Logger
 from src.utils.definition import Monster, Item
 from src.sprites import Sprite, Text
 from src.core.managers.resource_manager import ResourceManager
@@ -66,13 +65,27 @@ class Bag:
     def monsters(self, value):
         self._monsters = value
 
+    def has_alive_pokemon(self) -> bool:
+        """Check if any pokemon in the bag is alive."""
+        if not self._monsters_data:
+            return False
+        for mon in self._monsters_data:
+            if mon.get("hp", 0) > 0:
+                return True
+        return False
+
     def save_battle(self):
         """Save battle."""
         for i in range(len(self._monsters)):
-            self._monsters_data[i]["hp"] = self._monsters[i]["chp"]
-            for ev in self._monsters[i]["EVA"].keys():
-                self._monsters_data[i]["EV"][ev] += self._monsters[i]["EVA"][ev]
-            self._monsters_data[i]["exp"] += self._monsters[i]["exp"]
+            # Use the idx field to map back to the correct monster in _monsters_data
+            real_idx = self._monsters[i]["idx"]
+            if real_idx < len(self._monsters_data):
+                self._monsters_data[real_idx]["hp"] = self._monsters[i]["chp"]
+                for ev in self._monsters[i]["EVA"].keys():
+                    self._monsters_data[real_idx]["EV"][ev] += self._monsters[i]["EVA"][
+                        ev
+                    ]
+                self._monsters_data[real_idx]["exp"] += self._monsters[i]["exp"]
         self.check()
 
     def check(self) -> None:
@@ -251,6 +264,34 @@ class Bag:
                     self._items_data[i]["count"] += add_count
                     break
 
+    def add_captured(self, monster: dict):
+        """Add a captured monster to the bag.
+
+        Args:
+            monster: The monster dict from combat (contains battle stats like chp, hp, etc.)
+        """
+        # Convert combat monster dict to storage format (Monster data structure)
+        new_monster = {
+            "id": monster["id"],
+            "name": monster["name"],
+            "level": monster["level"],
+            "hp": monster.get(
+                "chp", monster.get("hp", 1)
+            ),  # Use current HP as stored HP
+            "exp": monster["level"] ** 3,  # Set exp to match current level
+            "IV": monster.get(
+                "IV", {"hp": 0, "atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0}
+            ),
+            "EV": monster.get(
+                "EV", {"hp": 0, "atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0}
+            ),
+            "move": monster.get("move", []),
+        }
+
+        self._monsters_data.append(new_monster)
+        self.update_bag()
+        Logger.info(f"Added captured monster: {monster['name']} (ID: {monster['id']})")
+
     def add_monster_col(self, col_rect: pg.Rect):
         """Add Monster Col."""
         self.monster_col_rect = col_rect
@@ -344,6 +385,9 @@ class Bag:
             return
 
         for idx, monster in enumerate(self._monsters):
+            # Get actual monster data for exp calculation
+            mon_data = self._monsters_data[monster["idx"]]
+
             # Icon BG
             icon_bg_size = int(self.mon_slot_height * 0.8)
             icon_bg = Sprite(
@@ -391,7 +435,63 @@ class Bag:
                 icon_bg.rect.right + crd(self.mon_slots[idx].width).per(2),
                 self.mon_slots[idx].top + crd(self.mon_slot_height).per(65),
             )
-            self.monster_data.append((sprite, name, hp, level, type_sprites, icon_bg))
+
+            # Calculate EXP bar data
+            current_level = mon_data["level"]
+            current_exp = mon_data["exp"]
+            exp_for_current_level = current_level**3
+            exp_for_next_level = (current_level + 1) ** 3
+            exp_progress = current_exp - exp_for_current_level
+            exp_needed = exp_for_next_level - exp_for_current_level
+            exp_ratio = (
+                min(1.0, max(0.0, exp_progress / exp_needed)) if exp_needed > 0 else 1.0
+            )
+
+            # EXP bar dimensions
+            exp_bar_width = crd(self.mon_slots[idx].width).per(40)
+            exp_bar_height = 8
+            exp_bar_x = level.rect.right + 10
+            exp_bar_y = level.rect.centery - exp_bar_height // 2
+
+            # Store exp bar data as a tuple (rect, ratio)
+            exp_bar_data = (
+                pg.Rect(exp_bar_x, exp_bar_y, exp_bar_width, exp_bar_height),
+                exp_ratio,
+            )
+
+            # Evolution Indicator
+            evo_indicator = None
+            evo_data = pokedex.data[mon_data["id"]].get("evolution")
+            if evo_data:
+                can_evolve = False
+                if "level" in evo_data:
+                    # Check if level requirement met
+                    if mon_data["level"] >= evo_data["level"]:
+                        can_evolve = True
+
+                if can_evolve:
+                    # Create indicator (Green Up Arrow text for now)
+                    evo_indicator = Text("^", 40, "Green")
+                    # Position it near Level or Sprite?
+                    # Let's put it top-left of the slot or blinking?
+                    # Right side of exp bar?
+                    evo_indicator.rect.midleft = (
+                        level.rect.right + 10,
+                        level.rect.centery,
+                    )
+
+            self.monster_data.append(
+                (
+                    sprite,
+                    name,
+                    hp,
+                    level,
+                    type_sprites,
+                    icon_bg,
+                    exp_bar_data,
+                    evo_indicator,
+                )
+            )
 
     def add_item_col(self, col_rect: pg.Rect):
         """Add Item Col."""
@@ -464,7 +564,16 @@ class Bag:
         for bg in self.mbgs:
             bg.draw(screen)
         for mon in self.monster_data:
-            sprite, name, hp, level, type_sprites, icon_bg = mon
+            (
+                sprite,
+                name,
+                hp,
+                level,
+                type_sprites,
+                icon_bg,
+                exp_bar_data,
+                evo_indicator,
+            ) = mon
             icon_bg.draw(screen)
             sprite.draw(screen)
             name.draw(screen)
@@ -472,6 +581,22 @@ class Bag:
             level.draw(screen)
             for ts in type_sprites:
                 ts.draw(screen)
+
+            # Draw EXP Bar
+            bar_rect, ratio = exp_bar_data
+            # Background (e.g. dark grey)
+            pg.draw.rect(screen, (50, 50, 50), bar_rect)
+            # Fill (e.g. blue or cyan)
+            if ratio > 0:
+                fill_width = int(bar_rect.width * ratio)
+                fill_rect = pg.Rect(
+                    bar_rect.left, bar_rect.top, fill_width, bar_rect.height
+                )
+                pg.draw.rect(screen, (0, 200, 255), fill_rect)
+
+            # Draw Evolution Indicator
+            if evo_indicator:
+                evo_indicator.draw(screen)
 
     def draw_items(self, screen):
         """Draw only item column."""

@@ -56,13 +56,20 @@ class CombatLogic:
         }
         return multipliers.get(stage, 1.0)
 
-    def attack(self, attacker: dict, defender: dict, move: dict) -> int:
-        """Calculate damage from attacker to defender using the given move"""
+    def attack(
+        self, attacker: dict, defender: dict, move: dict
+    ) -> tuple[int, float, bool]:
+        """Calculate damage from attacker to defender using the given move.
+
+        Returns:
+            tuple: (damage, type_effectiveness, hit_success)
+        """
         target = 1
         weather = 1
         critical = 1
         ran = self.rng.randint(85, 100) / 100
         acu = 1 if self.rng.randint(0, 100) < move["acc"] else 0
+        hit_success = acu == 1
         stab = 1.5 if move["type"] in attacker["type"] else 1
         ty: float = poketype.effective(move["type"], defender["type"])
         vai = target * weather * critical * ran * stab * ty * acu
@@ -115,9 +122,9 @@ class CombatLogic:
             f"DEBUG: Modifiers: Ran={ran}, Crit={critical}, Stab={stab}, Type={ty}"
         )
         Logger.debug(
-            f"{attacker['name']} dealt {int(dmg)} damage to {defender['name']}"
+            f"{attacker['name']} dealt {int(dmg)} damage to {defender['name']} (Effectiveness: {ty}x)"
         )
-        return int(dmg)
+        return (int(dmg), ty, hit_success)
 
     def estimate_damage(self, attacker: dict, defender: dict, move: dict) -> float:
         """Estimate damage for AI decision making (ignores RNG/Crit/Miss potential for simplicity)"""
@@ -232,15 +239,81 @@ class CombatLogic:
         base = pokedex.data[fainted["id"]]
         if "yield" in base:
             for stat, amount in base["yield"].items():
-                if stat in target["EVA"]:
-                    target["EVA"][stat] += amount
+                if stat in target["EV"]:
+                    target["EV"][stat] = min(252, target["EV"][stat] + amount)
 
-    def add_exp(self, fainted: dict, target: dict, is_trainer_battle: bool) -> None:
-        """Add experience from fainted Pokemon to target"""
-        if target["level"] >= gh.gm.player_level:
-            return
+    def get_required_exp(self, level: int) -> int:
+        """Calculate required EXP for next level"""
+        return (level + 1) ** 3
 
+    def recalculate_stats(self, mon: dict) -> None:
+        """Recalculate stats based on level, IVs, and EVs"""
+        base = pokedex.data[mon["id"]]
+        level = mon["level"]
+
+        # Capture old Max HP
+        old_max_hp = mon["hp"]
+
+        # New HP Calculation
+        new_max_hp = (
+            int((2 * base["hp"] + mon["IV"]["hp"] + mon["EV"]["hp"] / 4) * level / 100)
+            + level
+            + 10
+        )
+        mon["hp"] = new_max_hp
+
+        # Increase current HP by the max HP gain
+        hp_gain = new_max_hp - old_max_hp
+        if hp_gain > 0:
+            mon["chp"] += hp_gain
+
+        # Cap chp just in case
+        mon["chp"] = min(mon["chp"], mon["hp"])
+
+        # Other Stats
+        stats = ["atk", "def", "spa", "spd", "spe"]
+        for s in stats:
+            mon[s] = (
+                int((2 * base[s] + mon["IV"][s] + mon["EV"][s] / 4) * level / 100) + 5
+            )
+
+    def add_exp(
+        self, fainted: dict, target: dict, is_trainer_battle: bool
+    ) -> tuple[int, bool]:
+        """Add experience from fainted Pokemon to target. Returns (exp_gained, leveled_up)."""
+        if target["level"] >= 100:  # Cap at 100
+            return 0, False
+
+        # Calculate Gain
+        # Simplified formula: (BaseExp * Level * TrainerBonus) / 7
+        # We don't have BaseExp in pokedex explicitly used in old code, it used rng * level
+        # Let's keep it somewhat similar but boost it slightly
+        gain = (self.rng.randint(25, 50) * target["level"]) // 5
         if is_trainer_battle:
-            target["exp"] += (1.5 * self.rng.randint(25, 50) * target["level"]) // 7
-        else:
-            target["exp"] += (self.rng.randint(25, 50) * target["level"]) // 7
+            gain = int(gain * 1.5)
+
+        target["exp"] += gain
+        leveled_up = False
+
+        # Level Up Check
+        req = self.get_required_exp(target["level"])
+        while target["exp"] >= req:
+            target["exp"] -= req
+            target["level"] += 1
+            self.recalculate_stats(target)
+            leveled_up = True
+
+            # Heal fully on level up? Standard pokemon doesn't, but let's do small heal
+            # Actually standard practice is stats increase current HP by delta.
+            # `recalculate_stats` caps chp. Let's add delta match.
+            # Simplified: Level up restores 10% HP? No, let's stick to standard:
+            # Stats update, current HP stays same ratio? or same value?
+            # Same value + delta max HP is correct.
+            # My recalculate_stats implementation capped chp which is safe.
+
+            if target["level"] >= 100:
+                target["exp"] = 0
+                break
+            req = self.get_required_exp(target["level"])
+
+        return gain, leveled_up

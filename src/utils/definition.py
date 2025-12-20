@@ -62,13 +62,30 @@ class Teleport:
     to_pos: Position | None = None
 
     @overload
-    def __init__(self, x: int, y: int, destination: str, to_x: int | None = None, to_y: int | None = None) -> None: ...
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        destination: str,
+        to_x: int | None = None,
+        to_y: int | None = None,
+    ) -> None: ...
 
     @overload
-    def __init__(self, pos: Position, destination: str, to_pos: Position | None = None) -> None: ...
+    def __init__(
+        self, pos: Position, destination: str, to_pos: Position | None = None
+    ) -> None: ...
 
     def __init__(self, *args, **kwargs):
-        self.to_pos = None
+        self.to_pos = kwargs.get("to_pos")
+
+        # Case 1: Keyword Arguments (args is empty)
+        if not args:
+            self.pos = kwargs.get("pos")
+            self.destination = kwargs.get("destination")
+            return
+
+        # Case 2: Positional Arguments
         if isinstance(args[0], Position):
             self.pos = args[0]
             self.destination = args[1]
@@ -79,9 +96,9 @@ class Teleport:
             self.pos = Position(x, y)
             self.destination = dest
             if len(args) > 4:
-                 self.to_pos = Position(args[3], args[4])
+                self.to_pos = Position(args[3], args[4])
             elif "to_x" in kwargs and "to_y" in kwargs:
-                 self.to_pos = Position(kwargs["to_x"], kwargs["to_y"])
+                self.to_pos = Position(kwargs["to_x"], kwargs["to_y"])
 
     def to_dict(self):
         """To Dict."""
@@ -100,12 +117,17 @@ class Teleport:
         """From Dict."""
         to_pos = None
         if "to_x" in data and "to_y" in data:
-            to_pos = Position(data["to_x"] * GameSettings.TILE_SIZE, data["to_y"] * GameSettings.TILE_SIZE)
-        
+            to_pos = Position(
+                data["to_x"] * GameSettings.TILE_SIZE,
+                data["to_y"] * GameSettings.TILE_SIZE,
+            )
+
         return cls(
-            Position(data["x"] * GameSettings.TILE_SIZE, data["y"] * GameSettings.TILE_SIZE),
+            Position(
+                data["x"] * GameSettings.TILE_SIZE, data["y"] * GameSettings.TILE_SIZE
+            ),
             data["destination"],
-            to_pos
+            to_pos,
         )
 
 

@@ -61,7 +61,8 @@ class OnlineManager:
         self._last_chat_id = 0
         self._event_callbacks = []
 
-        Logger.info("OnlineManager initialized")
+        if GameSettings.ONLINE_LOGGING:
+            Logger.info("OnlineManager initialized")
 
     def enter(self):
         self.start()
@@ -74,19 +75,29 @@ class OnlineManager:
         with self._lock:
             return list(self.list_players)
 
-    def update(self, x: float, y: float, map_name: str, direction: str = "DOWN", skin: int = 0, moving: bool = False) -> bool:
+    def update(
+        self,
+        x: float,
+        y: float,
+        map_name: str,
+        direction: str = "DOWN",
+        skin: int = 0,
+        moving: bool = False,
+    ) -> bool:
         """Queue position update (no dir / moving)."""
         if self.player_id == -1:
             return False
         try:
-            self._update_queue.put_nowait({
-                "x": x,
-                "y": y,
-                "map": map_name,
-                "direction": direction,
-                "skin": skin,
-                "moving": moving,
-            })
+            self._update_queue.put_nowait(
+                {
+                    "x": x,
+                    "y": y,
+                    "map": map_name,
+                    "direction": direction,
+                    "skin": skin,
+                    "moving": moving,
+                }
+            )
             return True
         except queue.Full:
             return False
@@ -96,10 +107,7 @@ class OnlineManager:
         if self.player_id == -1:
             return False
         try:
-            self._event_out_queue.put_nowait({
-                "target_id": target_id,
-                "data": data
-            })
+            self._event_out_queue.put_nowait({"target_id": target_id, "data": data})
             return True
         except queue.Full:
             return False
@@ -116,9 +124,7 @@ class OnlineManager:
         self._stop_event.clear()
 
         self._ws_thread = threading.Thread(
-            target=self._ws_thread_func,
-            name="OnlineManagerWebSocket",
-            daemon=True
+            target=self._ws_thread_func, name="OnlineManagerWebSocket", daemon=True
         )
         self._ws_thread.start()
 
@@ -160,12 +166,11 @@ class OnlineManager:
             try:
                 # Connect to WebSocket server
                 async with websockets.connect(
-                    self.ws_url,
-                    ping_interval=20,
-                    ping_timeout=10
+                    self.ws_url, ping_interval=20, ping_timeout=10
                 ) as websocket:
                     self._ws = websocket
-                    Logger.info("WebSocket connected")
+                    if GameSettings.ONLINE_LOGGING:
+                        Logger.info("WebSocket connected")
                     reconnect_delay = 1.0  # Reset delay on successful connection
 
                     # Start sender task
@@ -187,7 +192,9 @@ class OnlineManager:
                             pass
 
             except Exception as e:
-                Logger.warning(f"WebSocket connection error: {e}, reconnecting in {reconnect_delay}s")
+                Logger.warning(
+                    f"WebSocket connection error: {e}, reconnecting in {reconnect_delay}s"
+                )
                 await asyncio.sleep(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
             finally:
@@ -203,7 +210,8 @@ class OnlineManager:
 
             if msg_type == "registered":
                 self.player_id = int(data.get("id", -1))
-                Logger.info(f"OnlineManager registered with id={self.player_id}")
+                if GameSettings.ONLINE_LOGGING:
+                    Logger.info(f"OnlineManager registered with id={self.player_id}")
 
             elif msg_type == "players_update":
                 players_data = data.get("players", {})
@@ -212,15 +220,19 @@ class OnlineManager:
                     for pid_str, player_data in players_data.items():
                         pid = int(pid_str)
                         if pid != self.player_id:
-                            filtered.append({
-                                "id": pid,
-                                "x": float(player_data.get("x", 0)),
-                                "y": float(player_data.get("y", 0)),
-                                "map": str(player_data.get("map", "")),
-                                "direction": str(player_data.get("direction", "DOWN")),
-                                "skin": int(player_data.get("skin", 0)),
-                                "moving": bool(player_data.get("moving", False)),
-                            })
+                            filtered.append(
+                                {
+                                    "id": pid,
+                                    "x": float(player_data.get("x", 0)),
+                                    "y": float(player_data.get("y", 0)),
+                                    "map": str(player_data.get("map", "")),
+                                    "direction": str(
+                                        player_data.get("direction", "DOWN")
+                                    ),
+                                    "skin": int(player_data.get("skin", 0)),
+                                    "moving": bool(player_data.get("moving", False)),
+                                }
+                            )
                     self.list_players = filtered
 
             elif msg_type == "chat_update":
@@ -286,14 +298,11 @@ class OnlineManager:
                 try:
                     chat_text = self._chat_out_queue.get_nowait()
                     if self.player_id >= 0:
-                        message = {
-                            "type": "chat_send",
-                            "text": chat_text
-                        }
+                        message = {"type": "chat_send", "text": chat_text}
                         await websocket.send(json.dumps(message))
                 except queue.Empty:
                     pass
-                
+
                 # Send direct events
                 try:
                     event_msg = self._event_out_queue.get_nowait()
@@ -301,7 +310,7 @@ class OnlineManager:
                         message = {
                             "type": "direct_event",
                             "target_id": event_msg["target_id"],
-                            "data": event_msg["data"]
+                            "data": event_msg["data"],
                         }
                         await websocket.send(json.dumps(message))
                 except queue.Empty:

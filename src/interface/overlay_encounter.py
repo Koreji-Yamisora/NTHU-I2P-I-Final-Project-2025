@@ -52,7 +52,9 @@ class HPbar(Overlay):
         self.w = w
         self.h = h
 
-        self.blank_bar = Sprite(p1, (self.w, self.h), nine_grid_margins=(45, 45, 45, 45))
+        self.blank_bar = Sprite(
+            p1, (self.w, self.h), nine_grid_margins=(45, 45, 45, 45)
+        )
         self.blank_bar.image = color.recol(self.blank_bar.image, (120, 120, 120))
 
         self.fill_bar = Sprite(p2, (self.w, self.h), nine_grid_margins=(45, 45, 45, 45))
@@ -68,8 +70,23 @@ class HPbar(Overlay):
         setattr(self.blank_bar.rect, key, pos)
 
     def load(self):
+        """Load HP bar with charge-up animation from 0."""
         self.update_bar_color()
-        self.fill_bar.update_bar(int(self.max_width * self.ratio))
+        # Animate from 0 to current ratio on first load
+        if not self.inited:
+            self.animate_from_zero()
+            self.inited = True
+        else:
+            self.fill_bar.update_bar(int(self.max_width * self.ratio))
+
+    def animate_from_zero(self):
+        """Start HP bar at 0 and animate to current ratio."""
+        self.fill_bar.update_bar(0)
+        self.start_width = 0
+        self.target_width = int(self.max_width * self.ratio)
+        self.elapsed = 0.0
+        self.duration = 0.8  # Faster charge animation
+        self.animating = True
 
     def health_ratio(self, mon):
         self.ratio = mon["chp"] / mon["hp"]
@@ -150,7 +167,8 @@ class HealthOverlay(Overlay):
             self.sh.per(2),
         )
         self.bg = Sprite(
-            "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(28), self.sh.per(15)),
+            "UI/raw/UI_Flat_FrameSlot02a.png",
+            (self.sw.per(28), self.sh.per(15)),
             nine_grid_margins=(45, 45, 45, 45),
         )
         self.bg.image = color.recol(self.bg.image, (120, 120, 120))
@@ -161,7 +179,8 @@ class HealthOverlay(Overlay):
             (self.sw - self.sh.per(5), self.sh - self.sh.per(25)), "bottomright"
         )
         self.bg2 = Sprite(
-            "UI/raw/UI_Flat_FrameSlot02a.png", (self.sw.per(28), self.sh.per(15)),
+            "UI/raw/UI_Flat_FrameSlot02a.png",
+            (self.sw.per(28), self.sh.per(15)),
             nine_grid_margins=(45, 45, 45, 45),
         )
         self.bg2.image = color.recol(self.bg2.image, (120, 120, 120))
@@ -258,7 +277,11 @@ class SwitchOverlay(Overlay):
         self.clear()
         self.selected = False
         self.forced = forced
-        bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(80)), nine_grid_margins=(45, 45, 45, 45))
+        bg = Sprite(
+            "UI/raw/UI_Flat_Frame03a.png",
+            (sw.per(40), sh.per(80)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
         bg.image = color.recol(bg.image, (120, 120, 120))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
         b = bg.rect.copy()
@@ -316,8 +339,12 @@ class SwitchOverlay(Overlay):
                     lambda idx=monster["idx"]: self.action(idx),
                     nine_grid_margins=(45, 45, 45, 45),
                 )
-                mbg.img_button_default.image = color.recol(mbg.img_button_default.image, (120, 120, 120))
-                mbg.img_button_hover.image = color.recol(mbg.img_button_hover.image, (120, 120, 120))
+                mbg.img_button_default.image = color.recol(
+                    mbg.img_button_default.image, (120, 120, 120)
+                )
+                mbg.img_button_hover.image = color.recol(
+                    mbg.img_button_hover.image, (120, 120, 120)
+                )
                 mbg.hitbox.bottom = b.bottom - slot_height * idx
             self.add_active(mbg)
             sprite = Sprite(pokedex.data[monster["id"]]["sprite_path"], (96, 96))
@@ -413,7 +440,11 @@ class ActionOverlay(Overlay):
         self.is_run = False
         self.first = True
         self.try_run = False
-        bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(15)), nine_grid_margins=(45, 45, 45, 45))
+        bg = Sprite(
+            "UI/raw/UI_Flat_Frame03a.png",
+            (sw.per(40), sh.per(15)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
         bg.image = color.recol(bg.image, (120, 120, 120))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
         run_button = Button(
@@ -456,14 +487,30 @@ class ActionOverlay(Overlay):
             lambda: self.action(3),
             nine_grid_margins=(14, 14, 14, 14),
         )
-        run_button.img_button_default.image = color.recol(run_button.img_button_default.image, (120, 120, 120))
-        run_button.img_button_hover.image = color.recol(run_button.img_button_hover.image, (120, 120, 120))
-        switch_button.img_button_default.image = color.recol(switch_button.img_button_default.image, (120, 120, 120))
-        switch_button.img_button_hover.image = color.recol(switch_button.img_button_hover.image, (120, 120, 120))
-        fight_button.img_button_default.image = color.recol(fight_button.img_button_default.image, (120, 120, 120))
-        fight_button.img_button_hover.image = color.recol(fight_button.img_button_hover.image, (120, 120, 120))
-        item_button.img_button_default.image = color.recol(item_button.img_button_default.image, (120, 120, 120))
-        item_button.img_button_hover.image = color.recol(item_button.img_button_hover.image, (120, 120, 120))
+        run_button.img_button_default.image = color.recol(
+            run_button.img_button_default.image, (120, 120, 120)
+        )
+        run_button.img_button_hover.image = color.recol(
+            run_button.img_button_hover.image, (120, 120, 120)
+        )
+        switch_button.img_button_default.image = color.recol(
+            switch_button.img_button_default.image, (120, 120, 120)
+        )
+        switch_button.img_button_hover.image = color.recol(
+            switch_button.img_button_hover.image, (120, 120, 120)
+        )
+        fight_button.img_button_default.image = color.recol(
+            fight_button.img_button_default.image, (120, 120, 120)
+        )
+        fight_button.img_button_hover.image = color.recol(
+            fight_button.img_button_hover.image, (120, 120, 120)
+        )
+        item_button.img_button_default.image = color.recol(
+            item_button.img_button_default.image, (120, 120, 120)
+        )
+        item_button.img_button_hover.image = color.recol(
+            item_button.img_button_hover.image, (120, 120, 120)
+        )
         self.add_active(item_button)
         label = Text("Run", 32, "Black")
         label.rect.center = run_button.hitbox.center
@@ -502,7 +549,11 @@ class MoveOverlay(Overlay):
         sw = crd(GameSettings.SCREEN_WIDTH)
         sh = crd(GameSettings.SCREEN_HEIGHT)
 
-        bg = Sprite("UI/raw/UI_Flat_Frame03a.png", (sw.per(40), sh.per(15)), nine_grid_margins=(45, 45, 45, 45))
+        bg = Sprite(
+            "UI/raw/UI_Flat_Frame03a.png",
+            (sw.per(40), sh.per(15)),
+            nine_grid_margins=(45, 45, 45, 45),
+        )
         bg.image = color.recol(bg.image, (120, 120, 120))
         bg.rect.bottomright = (sw - sh.per(3), sh - sh.per(3))
 
@@ -525,6 +576,13 @@ class MoveOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(0),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        move1.img_button_default.image = color.recol(
+            move1.img_button_default.image, (120, 120, 120)
+        )
+        move1.img_button_hover.image = color.recol(
+            move1.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(move1)
 
@@ -536,6 +594,13 @@ class MoveOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(1),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        move2.img_button_default.image = color.recol(
+            move2.img_button_default.image, (120, 120, 120)
+        )
+        move2.img_button_hover.image = color.recol(
+            move2.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(move2)
 
@@ -547,6 +612,13 @@ class MoveOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(2),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        move3.img_button_default.image = color.recol(
+            move3.img_button_default.image, (120, 120, 120)
+        )
+        move3.img_button_hover.image = color.recol(
+            move3.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(move3)
 
@@ -558,41 +630,137 @@ class MoveOverlay(Overlay):
             bg.rect.width // 2 - sh.per(6),
             bg.rect.height // 2 - sh.per(2),
             lambda: self.action(3),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        move4.img_button_default.image = color.recol(
+            move4.img_button_default.image, (120, 120, 120)
+        )
+        move4.img_button_hover.image = color.recol(
+            move4.img_button_hover.image, (120, 120, 120)
         )
         self.add_active(move4)
 
+        # Store move buttons for coloring
+        self.move_buttons = [move1, move2, move3, move4]
+
+        # Type color mapping
+        self.type_colors = {
+            "nor": (168, 168, 120),
+            "fir": (240, 128, 48),
+            "wat": (104, 144, 240),
+            "ele": (248, 208, 48),
+            "gra": (120, 200, 80),
+            "ice": (152, 216, 216),
+            "fig": (192, 48, 40),
+            "poi": (160, 64, 160),
+            "gro": (224, 192, 104),
+            "fly": (168, 144, 240),
+            "psy": (248, 88, 136),
+            "bug": (168, 184, 32),
+            "roc": (184, 160, 56),
+            "gho": (112, 88, 152),
+            "dra": (112, 56, 248),
+            "dar": (112, 88, 72),
+            "ste": (184, 184, 208),
+            "fai": (238, 153, 172),
+        }
+
         self.labels = []
+        self.pp_labels = []
         label = Text("1", 32, "Black")
         label.rect.center = move1.hitbox.center
         label.rect.bottom -= move1.hitbox.height // 16
         self.labels.append(label)
+        pp_label = Text("", 16, "Black")
+        pp_label.rect.center = move1.hitbox.center
+        pp_label.rect.top = label.rect.bottom + 2
+        self.pp_labels.append(pp_label)
+
         label = Text("2", 32, "Black")
         label.rect.center = move2.hitbox.center
         label.rect.bottom -= move2.hitbox.height // 16
         self.labels.append(label)
+        pp_label = Text("", 16, "Black")
+        pp_label.rect.center = move2.hitbox.center
+        pp_label.rect.top = label.rect.bottom + 2
+        self.pp_labels.append(pp_label)
+
         label = Text("3", 32, "Black")
         label.rect.center = move3.hitbox.center
         label.rect.bottom -= move3.hitbox.height // 16
         self.labels.append(label)
+        pp_label = Text("", 16, "Black")
+        pp_label.rect.center = move3.hitbox.center
+        pp_label.rect.top = label.rect.bottom + 2
+        self.pp_labels.append(pp_label)
+
         label = Text("4", 32, "Black")
         label.rect.center = move4.hitbox.center
         label.rect.bottom -= move4.hitbox.height // 16
         self.labels.append(label)
+        pp_label = Text("", 16, "Black")
+        pp_label.rect.center = move4.hitbox.center
+        pp_label.rect.top = label.rect.bottom + 2
+        self.pp_labels.append(pp_label)
 
     def action(self, key):
         if key < len(self.moves):
             self.selected = True
             if hasattr(scene_manager._current_scene, "move"):
                 setattr(scene_manager._current_scene, "move", key)
-                Logger.debug(f"MoveOverlay: Move {key} selected. self.selected set to True.")
+                Logger.debug(
+                    f"MoveOverlay: Move {key} selected. self.selected set to True."
+                )
 
     def inmove(self, moves: list[dict]):
+        from src.data.pokedex import PokeItems
+
         self.moves = moves
+        # Remove old PP labels
+        for pp in self.pp_labels:
+            if pp in self.components:
+                self.components.remove(pp)
+
         for i in range(len(self.moves)):
-            self.labels[i].change_text(self.moves[i]["name"], "center")
+            move = self.moves[i]
+            move_name = move.get("name", "")
+            self.labels[i].change_text(move_name, "center")
             self.add_passive(self.labels[i])
+
+            # Look up move data from PokeItems if PP/type missing
+            static_move = PokeItems.moves.get(move_name, {})
+            max_pp = move.get("pp") or static_move.get("pp", 10)
+            current_pp = move.get("cpp", max_pp)
+            move_type = move.get("type") or static_move.get("type", "nor")
+            power = move.get("power") or static_move.get("power", 0)
+            acc = move.get("acc") or static_move.get("acc", 100)
+
+            # Show PP, Power, Accuracy
+            info = f"PP:{current_pp}/{max_pp} Pwr:{power} Acc:{acc}"
+            self.pp_labels[i].change_text(info, "center")
+            self.add_passive(self.pp_labels[i])
+
+            # Color button based on move type
+            type_color = self.type_colors.get(move_type, (120, 120, 120))
+            btn = self.move_buttons[i]
+            btn.img_button_default.image = color.recol(
+                btn.img_button_default.image, type_color
+            )
+            hover_color = tuple(min(255, c + 30) for c in type_color)
+            btn.img_button_hover.image = color.recol(
+                btn.img_button_hover.image, hover_color
+            )
+
         for i in range(len(self.moves), 4):
+            self.labels[i].change_text("---", "center")
             self.add_passive(self.labels[i])
+            btn = self.move_buttons[i]
+            btn.img_button_default.image = color.recol(
+                btn.img_button_default.image, (80, 80, 80)
+            )
+            btn.img_button_hover.image = color.recol(
+                btn.img_button_hover.image, (80, 80, 80)
+            )
 
     def close2(self):
         getattr(scene_manager._current_scene, "action_overlay").is_move = False
@@ -639,18 +807,23 @@ class ItemOverlay(Overlay):
                 lambda idx=idx: self.action(idx),
                 nine_grid_margins=(45, 45, 45, 45),
             )
-            mbg.img_button_default.image = color.recol(mbg.img_button_default.image, (120, 120, 120))
-            mbg.img_button_hover.image = color.recol(mbg.img_button_hover.image, (120, 120, 120))
+            mbg.img_button_default.image = color.recol(
+                mbg.img_button_default.image, (120, 120, 120)
+            )
+            mbg.img_button_hover.image = color.recol(
+                mbg.img_button_hover.image, (120, 120, 120)
+            )
             mbg.hitbox.bottom = b.bottom - slot_height * idx
             self.add_active(mbg)
-            
+
             # Get sprite path with fallback to PokeItems
             sprite_path = item.get("sprite_path")
             if not sprite_path:
                 from src.data.pokedex import PokeItems
+
                 static_data = PokeItems.items.get(item["name"], {})
                 sprite_path = static_data.get("sprite_path", "ingame_ui/ball.png")
-            
+
             sprite = Sprite(sprite_path, (64, 64))
             sprite.rect.center = (
                 mbg.hitbox.right - crd(mbg.hitbox.width).per(15),
@@ -675,18 +848,18 @@ class ItemOverlay(Overlay):
     def action(self, idx):
         items = getattr(gh, "gm").bag._items_data
         item = items[idx]
-        
+
         # Check if item is available
         if item["count"] <= 0:
             return
-        
+
         # Store the selected item
         self.selected_item = item
         self.selected = True
-        
+
         # Decrease count
         item["count"] -= 1
-        
+
         # Set catching flag if pokeball
         if "ball" in item["name"].lower():
             setattr(scene_manager._current_scene, "catching", True)

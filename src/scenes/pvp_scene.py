@@ -4,6 +4,7 @@ from src.utils.combat import OnlineCombatHandler
 from src.utils import Logger
 from src.core import gh
 
+
 class PvPScene(CombatScene):
     """Player vs Player combat scene"""
 
@@ -15,8 +16,8 @@ class PvPScene(CombatScene):
         if not gh.gm:
             gh.load()
         if not gh.gm.current_fight:
-             self.exit()
-             return
+            self.exit()
+            return
 
         # Player setup (same as others)
         self.ci1 = 0
@@ -24,7 +25,7 @@ class PvPScene(CombatScene):
             if mon["chp"] > 0:
                 self.ci1 = i
                 break
-        
+
         self.ci2 = 0
         self.m1 = gh.gm.bag.monsters[self.ci1]
         self.m2 = gh.gm.current_fight.monsters[self.ci2]
@@ -63,22 +64,22 @@ class PvPScene(CombatScene):
         # Check for opponent data
         if not self.data_received and self.handler:
             self.sync_timer += dt
-            if self.handler.opponent_data:
-                op_data = self.handler.opponent_data
-            if "monsters" in op_data:
+            op_data = self.handler.opponent_data
+
+            if op_data and "monsters" in op_data:
                 # Update opponent monsters in the temporary fight context
                 gh.gm.current_fight.monsters = op_data["monsters"]
-                
+
                 # Validate index
                 if self.ci2 >= len(gh.gm.current_fight.monsters):
                     self.ci2 = 0
-                
+
                 self.m2 = gh.gm.current_fight.monsters[self.ci2]
-                
+
                 # Update logic with new monster
                 if self.logic:
                     self.logic.pc2 = self.m2
-                    
+
                 # Reload visuals
                 self._img()
                 self.health_overlay.load()
@@ -86,7 +87,7 @@ class PvPScene(CombatScene):
                 self.data_received = True
                 self.waiting_for_action = True
             elif self.sync_timer > 5.0:
-                 Logger.warning("PvP Data Sync Timed Out!")
-                 self.notichange("Sync failed, using default data.")
-                 self.data_received = True
-                 self.waiting_for_action = True
+                Logger.warning("PvP Data Sync Timed Out!")
+                self.notichange("Sync failed, using default data.")
+                self.data_received = True
+                self.waiting_for_action = True

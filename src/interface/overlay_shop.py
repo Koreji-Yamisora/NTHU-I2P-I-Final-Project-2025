@@ -26,6 +26,10 @@ class Shop(Overlay):
         self.scroll_y = 0.0
         self.mode = "buy"  # buy, sell_item, sell_mon
         self.selected_index = -1
+        self.selected_item_idx = -1  # Currently selected item for transaction
+        # Snap scroll properties
+        self._snap_target = None  # Target scroll_y to snap to
+        self._snap_speed = 15.0  # Snap animation speed multiplier
         self._build_ui()
 
     def _build_ui(self):
@@ -125,6 +129,30 @@ class Shop(Overlay):
         t3.rect.center = self.btn_sell_mon.hitbox.center
         self.add_passive(t3)
 
+        # Confirm Button (Buy/Sell)
+        self.confirm_btn = Button(
+            "UI/raw/UI_Flat_Button01a_4.png",
+            "UI/raw/UI_Flat_Button01a_3.png",
+            bgcx.per(50),
+            bgcy.per(30),
+            100,
+            40,
+            lambda: self.confirm_action(),
+            nine_grid_margins=(14, 14, 14, 14),
+        )
+        self.confirm_btn.img_button_default.image = color.recol(
+            self.confirm_btn.img_button_default.image,
+            (60, 140, 60),  # Green
+        )
+        self.confirm_btn.img_button_hover.image = color.recol(
+            self.confirm_btn.img_button_hover.image, (80, 180, 80)
+        )
+        self.add_active(self.confirm_btn)
+
+        self.confirm_text = Text("Buy", 20, "white")
+        self.confirm_text.rect.center = self.confirm_btn.hitbox.center
+        self.add_passive(self.confirm_text)
+
         bg_left = crd(self.bg.rect.left)
         bg_top = crd(self.bg.rect.top)
         bg_width = crd(self.bg.rect.width)
@@ -132,9 +160,9 @@ class Shop(Overlay):
 
         # Scroll Area Setup
         x = bg_left + bg_width.per(10)
-        y = bg_top + bg_height.per(10)
+        y = bg_top + bg_height.per(15)  # Moved down to make room for quantity selector
         w = bg_width.per(80)
-        h = bg_height.per(80)
+        h = bg_height.per(75)  # Adjusted height
         self.scroll_area = pg.Rect(x, y, w, h)
 
         self.height = self.scroll_area.height // 8
@@ -145,6 +173,13 @@ class Shop(Overlay):
 
     def set_mode(self, mode):
         self.mode = mode
+        if hasattr(self, "confirm_text"):
+            if mode == "buy":
+                self.confirm_text.change_text("Buy")
+            elif mode == "sell_item":
+                self.confirm_text.change_text("Sell")
+            elif mode == "sell_mon":
+                self.confirm_text.change_text("Sell")
 
         if mode == "buy":
             self.title_label.change_text("Shop")
@@ -322,7 +357,19 @@ class Shop(Overlay):
         self._create_item_slots()
 
     def action(self, idx):
-        """Action."""
+        """Select an item for transaction."""
+        input_manager.reset()
+        self.selected_item_idx = idx
+        self.selected_index = idx
+        Logger.debug(f"Selected item {idx} for transaction")
+
+    def confirm_action(self):
+        """Execute the buy/sell transaction for selected item."""
+        idx = self.selected_item_idx
+        if idx < 0:
+            Logger.info("No item selected")
+            return
+
         input_manager.reset()
         assert gh.gm is not None
 
@@ -333,15 +380,26 @@ class Shop(Overlay):
                 static_data = pokeitems.items.get(item["name"], {})
                 price = static_data.get("price", 0)
 
-                if item["count"][0] > 0:
-                    if gh.gm.bag.money >= price:
-                        gh.gm.bag.money -= price
-                        item["count"][0] -= 1
+                # Calculate how many we can buy
+                qty = 1
+                available = item["count"][0]
+                affordable = gh.gm.bag.money // price if price > 0 else qty
+                actual_qty = min(qty, available, affordable)
+
+                if actual_qty > 0:
+                    total_cost = price * actual_qty
+                    gh.gm.bag.money -= total_cost
+                    item["count"][0] -= actual_qty
+                    # Add items with correct count
+                    for _ in range(actual_qty):
                         gh.gm.bag.add_item(item)
-                        self.refresh()
-                        Logger.info(f"Bought {item['name']} for {price}")
-                    else:
+                    self.refresh()
+                    Logger.info(f"Bought {actual_qty}x {item['name']} for {total_cost}")
+                else:
+                    if gh.gm.bag.money < price:
                         Logger.info("Not enough money")
+                    elif available <= 0:
+                        Logger.info("Out of stock")
 
         elif self.mode == "sell_item":
             my_items = gh.gm.bag.get_items()
@@ -350,10 +408,14 @@ class Shop(Overlay):
                 static_data = pokeitems.items.get(item["name"], {})
                 price = int(static_data.get("price", 0) * 0.5)
 
-                gh.gm.bag.remove_item(item["name"])
-                gh.gm.bag.money += price
+                # Calculate how many we can sell
+                qty = 1
+                total_price = price * qty
+
+                gh.gm.bag.remove_item(item["name"], qty)
+                gh.gm.bag.money += total_price
                 self.refresh()
-                Logger.info(f"Sold {item['name']} for {price}")
+                Logger.info(f"Sold {qty}x {item['name']} for {total_price}")
 
         elif self.mode == "sell_mon":
             monsters = gh.gm.bag.monsters
@@ -369,6 +431,9 @@ class Shop(Overlay):
                 gh.gm.bag.money += price
                 self.refresh()
                 Logger.info(f"Released {mon['name']} for {price}")
+
+        # Reset selection after transaction
+        self.selected_item_idx = -1
 
     def close(self):
         """Close."""
@@ -388,11 +453,34 @@ class Shop(Overlay):
             self.close()
 
         changed = False
+        user_scrolling = False
         if input_manager.mouse_wheel != 0:
             self.scroll_y -= input_manager.mouse_wheel * self.scroll_speed
             changed = True
+            user_scrolling = True
+            self._snap_target = None  # Cancel snap while user scrolls
 
         if changed:
+            self.scroll_y = max(0, min(self.max_scroll, self.scroll_y))
+            self._update_slot_positions()
+
+        # Snap to nearest slot when user stops scrolling
+        if not user_scrolling and self._snap_target is None and self.height > 0:
+            # Calculate nearest slot boundary
+            slot_idx = round(self.scroll_y / self.height)
+            snap_to = slot_idx * self.height
+            snap_to = max(0, min(self.max_scroll, snap_to))
+            if abs(snap_to - self.scroll_y) > 1:  # Only snap if not already aligned
+                self._snap_target = snap_to
+
+        # Animate snap
+        if self._snap_target is not None:
+            diff = self._snap_target - self.scroll_y
+            if abs(diff) < 1:
+                self.scroll_y = self._snap_target
+                self._snap_target = None
+            else:
+                self.scroll_y += diff * self._snap_speed * dt
             self.scroll_y = max(0, min(self.max_scroll, self.scroll_y))
             self._update_slot_positions()
 
@@ -404,6 +492,8 @@ class Shop(Overlay):
             nav_change = 1
 
         if nav_change != 0:
+            input_manager.reset()  # Reset input to stop continuous scrolling
+            self._snap_target = None  # Cancel snap on keyboard nav
             if self.selected_index == -1:
                 self.selected_index = 0
             else:
@@ -414,7 +504,10 @@ class Shop(Overlay):
                 0, min(self.selected_index, len(self.item_slots) - 1)
             )
 
-            # Auto-scroll
+            # Also update selected item for transaction
+            self.selected_item_idx = self.selected_index
+
+            # Auto-scroll to selected slot (snap directly)
             slot_top = self.height * self.selected_index
             slot_bottom = slot_top + self.height
 

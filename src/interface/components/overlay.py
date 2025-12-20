@@ -33,6 +33,13 @@ class Overlay(UIComponent):
             )
             self.dark_overlay.fill((0, 0, 0, overlay_alpha))
 
+        # Scale animation properties
+        self._animate_scale = True  # Set to False to disable scale animation
+        self._scale = 1.0
+        self._scale_anim_progress = 1.0  # 0.0 to 1.0
+        self._scale_anim_duration = 0.2  # seconds
+        self._scale_start = 0.75  # Start at 75% (1/4 smaller)
+
     def add_active(self, component: (Button | ToggleButton | Slider)) -> None:
         """Add Active."""
         self.active_components.append(component)
@@ -54,6 +61,13 @@ class Overlay(UIComponent):
         self.is_open = True
         self.is_active = True
         self.is_passive = True
+        # Reset scale animation
+        if self._animate_scale:
+            self._scale_anim_progress = 0.0
+            self._scale = self._scale_start
+        else:
+            self._scale_anim_progress = 1.0
+            self._scale = 1.0
 
     def clear(self):
         """Clear."""
@@ -74,6 +88,18 @@ class Overlay(UIComponent):
     def update(self, dt: float) -> None:
         """Update."""
         if self.is_open:
+            # Update scale animation
+            if self._scale_anim_progress < 1.0:
+                self._scale_anim_progress += dt / self._scale_anim_duration
+                if self._scale_anim_progress > 1.0:
+                    self._scale_anim_progress = 1.0
+                # Ease-out-back: overshoot then settle
+                t = self._scale_anim_progress
+                c1 = 1.70158
+                c3 = c1 + 1
+                ease_t = 1 + c3 * pow(t - 1, 3) + c1 * pow(t - 1, 2)
+                self._scale = self._scale_start + (1.0 - self._scale_start) * ease_t
+
             if self.is_active:
                 for c in self.active_components:
                     c.update(dt)
@@ -83,10 +109,11 @@ class Overlay(UIComponent):
         """Get dark overlay surface, recreating if screen size changed."""
         current_size = (GameSettings.SCREEN_WIDTH, GameSettings.SCREEN_HEIGHT)
         # Check if we need to recreate the overlay (size changed or first time)
-        if (not hasattr(self, "_dark_overlay_size") or 
-            self._dark_overlay_size != current_size or 
-            not hasattr(self, "dark_overlay")):
-            
+        if (
+            not hasattr(self, "_dark_overlay_size")
+            or self._dark_overlay_size != current_size
+            or not hasattr(self, "dark_overlay")
+        ):
             # Use SRCALPHA for proper transparency support
             self.dark_overlay = pg.Surface(current_size, pg.SRCALPHA)
             alpha = self.overlay_alpha if self.overlay_alpha is not None else 128
@@ -98,7 +125,7 @@ class Overlay(UIComponent):
     def rebuild_all(cls):
         """Rebuild all active overlays to respond to resolution changes."""
         for instance in cls._instances:
-            if hasattr(instance, '_build_ui'):
+            if hasattr(instance, "_build_ui"):
                 # Store open state to restore it if needed, though clear() should be safe
                 instance._build_ui()
         Logger.info("All UI overlays rebuilt for new resolution")
@@ -109,15 +136,41 @@ class Overlay(UIComponent):
         if self.is_open:
             if self.overlay_alpha is not None:
                 screen.blit(self._get_dark_overlay(), (0, 0))
-            for b in self.backgrounds:
-                b.draw(screen)
-            for c in self.active_components:
-                c.draw(screen)
-            for t in self.components:
-                t.draw(screen)
-            for t in self.components2:
-                t.draw(screen)
-            self.draw_content(screen)
+
+            # Apply scaling animation
+            if self._scale < 1.0:
+                # Create a temporary surface to draw content
+                temp_surface = pg.Surface(screen.get_size(), pg.SRCALPHA)
+
+                for b in self.backgrounds:
+                    b.draw(temp_surface)
+                for c in self.active_components:
+                    c.draw(temp_surface)
+                for t in self.components:
+                    t.draw(temp_surface)
+                for t in self.components2:
+                    t.draw(temp_surface)
+                self.draw_content(temp_surface)
+
+                # Scale and blit centered
+                scaled_size = (
+                    int(screen.get_width() * self._scale),
+                    int(screen.get_height() * self._scale),
+                )
+                scaled_surface = pg.transform.smoothscale(temp_surface, scaled_size)
+                x = (screen.get_width() - scaled_size[0]) // 2
+                y = (screen.get_height() - scaled_size[1]) // 2
+                screen.blit(scaled_surface, (x, y))
+            else:
+                for b in self.backgrounds:
+                    b.draw(screen)
+                for c in self.active_components:
+                    c.draw(screen)
+                for t in self.components:
+                    t.draw(screen)
+                for t in self.components2:
+                    t.draw(screen)
+                self.draw_content(screen)
 
     def update_content(self, dt: float) -> None:
         """Update content."""

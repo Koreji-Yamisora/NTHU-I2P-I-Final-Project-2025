@@ -6,7 +6,7 @@ from src.core.services import scene_manager, sound_manager, input_manager
 from src.core.gm_helper import gh
 from typing import override, Optional, Union, Generator
 from src.interface import overlay_combat as oc
-from src.data import pokedex
+from src.data import pokedex, pokeitems
 import random
 
 from src.utils.combat import CombatLogic, CombatAI
@@ -127,6 +127,11 @@ class CombatScene(Scene):
         self._init_overlays()
         self.noti = Text("", 32, "Black")
 
+        # Effectiveness display
+        self.effectiveness_text = Text("", 48, "White")
+        self.effectiveness_timer = 0
+        self.effectiveness_y_offset = 0
+
     def _init_overlays(self):
         self.item_overlay = oc.ItemOverlay()
         self.action_overlay = oc.ActionOverlay()
@@ -152,6 +157,23 @@ class CombatScene(Scene):
         self.turn_queue = []
         self.player_action = None
         self.executing_turn = False
+        self.victory = None
+
+        # Reset all battle state flags
+        self.exit_cd = 0.0
+        self.pfainted = False
+        self.efainted = False
+        self.catching = False
+        self.done = False
+        self.win = False
+        self.lose = False
+        self.swapping = False
+        self.waiting_for_action = False
+        self.player_turn = False
+        self.current_action_idx = 0
+        self.turn_timer = 0.0
+        self.catching_active = False
+        self.catching_enemy_alpha = 255  # Full opacity by default
 
     def load_data(self):
         """Child classes must implement this to load specific data"""
@@ -217,8 +239,10 @@ class CombatScene(Scene):
             self.move_overlay.inmove(self.m1.get("move", []))
 
     def save(self):
-        if hasattr(self, "m1") and self.m1:
-            gh.gm.bag.monsters[self.ci1] = self.m1
+        if hasattr(self, "m1") and self.m1 and self.m1.get("id"):
+            # Only save if we have valid monster data and ci1 is in bounds
+            if hasattr(self, "ci1") and 0 <= self.ci1 < len(gh.gm.bag.monsters):
+                gh.gm.bag.monsters[self.ci1] = self.m1
         gh.gm.bag.save_battle()
         gh.gm.bag.update_bag()
 
@@ -244,6 +268,37 @@ class CombatScene(Scene):
                 except StopIteration:
                     self.ntcon = False
                     self.run_iter = None
+
+    def show_effectiveness(self, effectiveness: float, hit: bool):
+        """Display effectiveness multiplier with animation."""
+        if not hit:
+            text = "MISS!"
+            text_color = "Gray"
+        elif effectiveness == 0:
+            text = "No Effect!"
+            text_color = "Gray"
+        elif effectiveness >= 4:
+            text = "4x!"
+            text_color = "Gold"
+        elif effectiveness >= 2:
+            text = "Super Effective!"
+            text_color = "LightGreen"
+        elif effectiveness > 1:
+            text = f"{effectiveness}x"
+            text_color = "LightGreen"
+        elif effectiveness < 0.5:
+            text = "Resist!"
+            text_color = "LightCoral"
+        elif effectiveness < 1:
+            text = "Not Very Effective"
+            text_color = "LightCoral"
+        else:
+            # Normal effectiveness (1x), don't show
+            return
+
+        self.effectiveness_text.change_text(text, color=text_color)
+        self.effectiveness_timer = 2.0  # Display for 2 seconds
+        self.effectiveness_y_offset = 0  # Reset position
 
     def switch_mon(self, idx: int):
         self.save()
@@ -322,6 +377,9 @@ class CombatScene(Scene):
             self.waiting_for_action = True
             self.player_turn = True
 
+            # Refresh move overlay to show updated PP
+            self.move_refresh()
+
             # PVP cleanup
             if self.combat_type == ct.PVP and self.handler:
                 self.handler.reset_turn()
@@ -358,6 +416,14 @@ class CombatScene(Scene):
             # Attacking
             self.notichange([f"{attacker['name']} used {action['name']}!", ""])
 
+            # Decrement PP for the used move
+            move_name = action.get("name", "")
+            for move in attacker.get("move", []):
+                if move.get("name") == move_name:
+                    if "cpp" in move:
+                        move["cpp"] = max(0, move["cpp"] - 1)
+                    break
+
             # Set seed if available
             if isinstance(action, dict) and "seed" in action:
                 if self.logic:
@@ -367,8 +433,12 @@ class CombatScene(Scene):
                 if self.logic:
                     self.logic.set_seed(self.player_action["seed"])
 
-            # Logic attack
-            dmg = self.logic.attack(attacker, defender, action) if self.logic else 0
+            # Logic attack - now returns (damage, effectiveness, hit)
+            if self.logic:
+                dmg, effectiveness, hit = self.logic.attack(attacker, defender, action)
+            else:
+                dmg, effectiveness, hit = 0, 1.0, False
+
             defender["chp"] = max(0, defender["chp"] - dmg)
             self.health_overlay.health_update()
 
@@ -386,8 +456,8 @@ class CombatScene(Scene):
                     target_sprite.shake(intensity=5, duration=0.4)
                     target_sprite.flash(color=(255, 0, 0), duration=0.4)
 
-            # Check effectiveness (simplification as logic doesn't return it yet)
-            # eff = self.logic.eff_mes(...)
+            # Display effectiveness message
+            self.show_effectiveness(effectiveness, hit)
 
             if defender["chp"] <= 0:
                 if is_player:
@@ -415,35 +485,118 @@ class CombatScene(Scene):
             return
 
         catch_rate = 1.0
+        ball_sprite_name = "poke"  # default
         if item:
             # Look up catch rate from static data
-            static_data = pokedex.PokeItems.items.get(item["name"], {})
+            static_data = pokeitems.items.get(item["name"], {})
             catch_rate = static_data.get("catch_rate", 1.0)
+            # Get ball sprite (e.g. "Poke Ball" -> "poke")
+            ball_name = item["name"].lower().replace(" ball", "").replace(" ", "")
+            ball_sprite_name = ball_name if ball_name else "poke"
 
-        # Base chance modified by ball
-        # Assuming 85 was previous base chance?
-        # Let's make it smarter: (MaxHP - CurrentHP) / MaxHP * Rate?
-        # Or just use the multiplier on the base 85 for now to be safe.
-
-        base_chance = 50.0  # Lower base catch rate
-
-        # HP Factor: (1 - (Current / Max)) * 50
+        base_chance = 50.0
         max_hp = self.m2["hp"]
         cur_hp = self.m2["chp"]
         hp_factor = (1.0 - (cur_hp / max_hp)) * 50.0 if max_hp > 0 else 50.0
-
         final_chance = (base_chance + hp_factor) * catch_rate
 
         Logger.info(
             f"Catching {self.m2['name']} with {item['name']}. Chance: {final_chance}%"
         )
 
-        if random.uniform(0, 100) < final_chance:
-            self.notichange(["Catching...", "Caught successfully!"])
-            gh.gm.bag.add_captured(self.m2)
-            self.done = True
-        else:
-            self.notichange(["Catching...", "Failed to catch!"])
+        # Determine success/failure
+        success = random.uniform(0, 100) < final_chance
+
+        # Start catching animation
+        self.start_catching_animation(ball_sprite_name, success)
+
+    def start_catching_animation(self, ball_sprite: str, success: bool):
+        """Start the pokeball catching animation."""
+        self.catching_active = True
+        self.catching_success = success
+        self.catching_phase = "throw"  # throw, shake, result
+        self.catching_timer = 0.0
+        self.catching_shakes = 0
+        self.catching_max_shakes = random.randint(1, 3) if not success else 3
+
+        # Create pokeball sprite
+        try:
+            self.pokeball_sprite = Sprite(f"ball/{ball_sprite}.png", (48, 48))
+        except Exception:
+            self.pokeball_sprite = Sprite("ball/poke.png", (48, 48))
+
+        # Start position (bottom left, player side)
+        sw = crd(GameSettings.SCREEN_WIDTH)
+        sh = crd(GameSettings.SCREEN_HEIGHT)
+        self.pokeball_start = (sw.per(20), sh.per(70))
+        self.pokeball_end = (self.m2_sprite.rect.centerx, self.m2_sprite.rect.centery)
+        self.pokeball_sprite.rect.center = self.pokeball_start
+
+        self.notichange("...")
+
+    def update_catching_animation(self, dt: float):
+        """Update the catching animation state machine."""
+        if not getattr(self, "catching_active", False):
+            return False
+
+        self.catching_timer += dt
+
+        if self.catching_phase == "throw":
+            # Arc throw animation (0.5 seconds)
+            t = min(self.catching_timer / 0.5, 1.0)
+            # Lerp position with arc
+            x = (
+                self.pokeball_start[0]
+                + (self.pokeball_end[0] - self.pokeball_start[0]) * t
+            )
+            y = (
+                self.pokeball_start[1]
+                + (self.pokeball_end[1] - self.pokeball_start[1]) * t
+            )
+            # Add arc (parabola)
+            arc_height = -150 * (4 * t * (1 - t))  # Peak at t=0.5
+            y += arc_height
+            self.pokeball_sprite.rect.center = (int(x), int(y))
+
+            if t >= 1.0:
+                self.catching_phase = "shake"
+                self.catching_timer = 0.0
+                self.catching_enemy_alpha = 100  # Store alpha for faded enemy
+
+        elif self.catching_phase == "shake":
+            # Shake animation (0.5 seconds per shake)
+            shake_duration = 0.5
+            if self.catching_timer >= shake_duration:
+                self.catching_shakes += 1
+                self.catching_timer = 0.0
+
+                # Shake movement
+                if self.catching_shakes < self.catching_max_shakes:
+                    self.notichange("...")
+                else:
+                    self.catching_phase = "result"
+                    self.catching_timer = 0.0
+            else:
+                # Wobble effect
+                wobble = int(
+                    5 * pg.math.Vector2(1, 0).rotate(self.catching_timer * 720).x
+                )
+                self.pokeball_sprite.rect.centerx = self.pokeball_end[0] + wobble
+
+        elif self.catching_phase == "result":
+            if self.catching_timer >= 0.3:
+                self.catching_enemy_alpha = 255  # Restore enemy visibility
+                self.catching_active = False
+
+                if self.catching_success:
+                    self.notichange(["Caught successfully!"])
+                    gh.gm.bag.add_captured(self.m2)
+                    self.done = True
+                else:
+                    self.notichange(["Failed to catch!"])
+                return False
+
+        return True  # Animation still running
 
     def run_attempt(self):
         if random.randint(0, 100) < 95:
@@ -453,8 +606,17 @@ class CombatScene(Scene):
 
     def enemy_fainted(self):
         self.notichange(f"{self.m2['name']} fainted!")
+
+        # Calculate EXP
+        start_exp = self.m1["exp"]
+        start_level = self.m1["level"]
+        exp_gain = 0
+        leveled_up = False
+
         if self.logic:
-            self.logic.add_exp(self.m2, self.m1, self.combat_type == ct.TRAINER)
+            exp_gain, leveled_up = self.logic.add_exp(
+                self.m2, self.m1, self.combat_type == ct.TRAINER
+            )
             self.logic.add_yield(self.m2, self.m1)
 
         self.efainted = True
@@ -475,7 +637,17 @@ class CombatScene(Scene):
                 gh.gm.player_level += 1
                 self.notichange(f"Player Level grew to {gh.gm.player_level}!")
 
-            self.victory = oc.Victory(1)
+            # Pass EXP data to Victory overlay
+            exp_data = {
+                "mon": self.m1,
+                "start_exp": start_exp,
+                "start_level": start_level,
+                "end_exp": self.m1["exp"],
+                "end_level": self.m1["level"],
+                "gain": exp_gain,
+            }
+
+            self.victory = oc.Victory(1, exp_data=exp_data)
 
     def fainted(self):
         self.pfainted = True
@@ -531,6 +703,7 @@ class CombatScene(Scene):
         if self.exit_cd >= 3:
             if self.combat_type == ct.PVP and self.handler:
                 self.handler.send_battle_end(self.win)
+            gh.gm.current_fight = None
             scene_manager.change_scene("game")
 
     @override
@@ -539,15 +712,30 @@ class CombatScene(Scene):
         self.text_update(dt)
         self.health_overlay.update(dt)
 
+        # Update effectiveness display animation
+        if self.effectiveness_timer > 0:
+            self.effectiveness_timer -= dt
+            self.effectiveness_y_offset += dt * 20  # Slow upward float
+
         if hasattr(self, "m1_sprite"):
             self.m1_sprite.update(dt)
         if hasattr(self, "m2_sprite"):
             self.m2_sprite.update(dt)
 
         if self.win or self.lose or self.done:
+            # Update victory overlay animation
+            if self.victory:
+                self.victory.update(dt)
+                if getattr(self.victory, "animating", False):
+                    return  # Wait for animation to finish
+
             if not self.health_overlay.animating:
                 self.wait_exit(dt)
             return
+
+        # Update catching animation
+        if self.update_catching_animation(dt):
+            return  # Block other input while catching
 
         # Check faint states
         self.try_switching()
@@ -751,11 +939,46 @@ class CombatScene(Scene):
         if hasattr(self, "m1_sprite"):
             self.m1_sprite.draw(screen)
         if hasattr(self, "m2_sprite"):
-            self.m2_sprite.draw(screen)
+            # Handle alpha during catching animation using SRCALPHA
+            alpha = getattr(self, "catching_enemy_alpha", 255)
+            if alpha < 255:
+                # Create alpha-blended copy of enemy sprite
+                sprite_img = self.m2_sprite.image.copy()
+                alpha_surface = pg.Surface(sprite_img.get_size(), pg.SRCALPHA)
+                alpha_surface.fill((255, 255, 255, alpha))
+                sprite_img.blit(alpha_surface, (0, 0), special_flags=pg.BLEND_RGBA_MULT)
+                screen.blit(sprite_img, self.m2_sprite.rect)
+            else:
+                self.m2_sprite.draw(screen)
+
+        # Draw pokeball during catching animation
+        if getattr(self, "catching_active", False) and hasattr(self, "pokeball_sprite"):
+            self.pokeball_sprite.draw(screen)
 
         self.action_overlay.draw(screen)
         self.health_overlay.draw(screen)
         self.noti.draw(screen)
+
+        # Draw effectiveness text with animation
+        if self.effectiveness_timer > 0:
+            # Fade out effect using SRCALPHA
+            alpha = min(255, int((self.effectiveness_timer / 2.0) * 255))
+
+            # Position center-screen, slightly above center with upward float
+            sw = crd(GameSettings.SCREEN_WIDTH)
+            sh = crd(GameSettings.SCREEN_HEIGHT)
+            self.effectiveness_text.rect.center = (
+                sw // 2,
+                sh // 2 - 100 - int(self.effectiveness_y_offset),
+            )
+
+            # Create alpha surface and blit text onto it
+            text_surface = self.effectiveness_text.text.copy()
+            alpha_surface = pg.Surface(text_surface.get_size(), pg.SRCALPHA)
+            alpha_surface.fill((255, 255, 255, alpha))
+            text_surface.blit(alpha_surface, (0, 0), special_flags=pg.BLEND_RGBA_MULT)
+            screen.blit(text_surface, self.effectiveness_text.rect)
+
         self.move_overlay.draw(screen)
         self.item_overlay.draw(screen)
         self.switch_UI.draw(screen)

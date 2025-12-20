@@ -8,7 +8,9 @@ import math
 from typing import override
 from src.sprites import Sprite, Animation
 from src.utils.generate import generate_party
+import random
 from src.core.gm_helper import gh
+from src.core.services import scene_manager as sm
 
 
 class Player(Entity):
@@ -32,6 +34,7 @@ class Player(Entity):
 
     # Type annotations
     speed: float = 8.0 * GameSettings.TILE_SIZE
+    SPRINT_MULTIPLIER: float = 1.75  # Speed multiplier when sprinting
     game_manager: GameManager
     tp_cooldown: float
     path: list[Position]
@@ -92,30 +95,49 @@ class Player(Entity):
         
         self.position = ...
         """
-        if input_manager.key_down(pg.K_LEFT) or input_manager.key_down(pg.K_a):
-            dis.x -= 1
-            self.path = []
-        if input_manager.key_down(pg.K_RIGHT) or input_manager.key_down(pg.K_d):
-            dis.x += 1
-            self.path = []
-        if input_manager.key_down(pg.K_UP) or input_manager.key_down(pg.K_w):
-            dis.y -= 1
-            self.path = []
-        if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
-            dis.y += 1
-            self.path = []
+        # Check if any overlay is blocking input
+        overlay_blocking = False
+        if hasattr(sm, "_current_scene") and sm._current_scene:
+            scene = sm._current_scene
+            if hasattr(scene, "setting_overlay") and scene.setting_overlay.is_open:
+                overlay_blocking = True
+            elif hasattr(scene, "inventory") and scene.inventory.is_open:
+                overlay_blocking = True
+            elif hasattr(scene, "chat_overlay") and scene.chat_overlay.is_open:
+                overlay_blocking = True
+            elif (
+                hasattr(scene, "evolution_overlay") and scene.evolution_overlay.is_open
+            ):
+                overlay_blocking = True
+            elif hasattr(scene, "shop_on") and scene.shop_on:
+                overlay_blocking = True
 
-        # Controller Input (Left Joystick)
-        if dis.x == 0 and dis.y == 0:
-            axis_x = input_manager.get_axis(0)
-            axis_y = input_manager.get_axis(1)
+        if not overlay_blocking:
+            if input_manager.key_down(pg.K_LEFT) or input_manager.key_down(pg.K_a):
+                dis.x -= 1
+                self.path = []
+            if input_manager.key_down(pg.K_RIGHT) or input_manager.key_down(pg.K_d):
+                dis.x += 1
+                self.path = []
+            if input_manager.key_down(pg.K_UP) or input_manager.key_down(pg.K_w):
+                dis.y -= 1
+                self.path = []
+            if input_manager.key_down(pg.K_DOWN) or input_manager.key_down(pg.K_s):
+                dis.y += 1
+                self.path = []
 
-            if abs(axis_x) > 0.2:
-                dis.x = axis_x
-                self.path = []
-            if abs(axis_y) > 0.2:
-                dis.y = axis_y
-                self.path = []
+            # Controller Input (Left Joystick)
+            if dis.x == 0 and dis.y == 0:
+                axis_x = input_manager.get_axis(0)
+                axis_y = input_manager.get_axis(1)
+
+                if abs(axis_x) > 0.2:
+                    dis.x = axis_x
+                    self.path = []
+                if abs(axis_y) > 0.2:
+                    dis.y = axis_y
+                    self.path = []
+
         if (
             not (dis.x != 0 or dis.y != 0)
             and self.path
@@ -156,8 +178,14 @@ class Player(Entity):
         if norm != 0:
             dis.x /= norm
             dis.y /= norm
-        dis.x *= self.speed * dt
-        dis.y *= self.speed * dt
+
+        # Apply sprint multiplier if Shift is held
+        current_speed = self.speed
+        if input_manager.key_down(pg.K_LSHIFT) or input_manager.key_down(pg.K_RSHIFT):
+            current_speed *= self.SPRINT_MULTIPLIER
+
+        dis.x *= current_speed * dt
+        dis.y *= current_speed * dt
         if dis.x != 0 or dis.y != 0:
             self.is_moving = True
 
@@ -216,18 +244,36 @@ class Player(Entity):
             self.lr = not self.lr
             self.sm = False
             self.is_moving = False
-        np_rectx = self.animation.rect.copy()
-        np_rectx.x += int(dis.x)
-        if self.game_manager.check_collision(np_rectx):
-            self.position.x = self._snap_to_grid(self.position.x)
+        # Collision Handling with Sub-pixel precision (Wall Sliding)
+        # Use a smaller hitbox for collision to allow passing through tight gaps
+        # Rect is 64x64, we want ~40x40 for collision -> inset by ~12px each side (-24 total)
+        HITBOX_INSET = -24
+
+        # 1. Test X Movement
+        next_x = self.position.x + dis.x
+        test_rect_x = self.animation.rect.copy()
+        test_rect_x.x = int(next_x)
+
+        # Shrink the rect for collision check only
+        collision_rect_x = test_rect_x.inflate(HITBOX_INSET, HITBOX_INSET)
+
+        if self.game_manager.check_collision(collision_rect_x):
+            dis.x = 0  # Block X movement
         else:
-            self.position.x += dis.x
-        np_recty = self.animation.rect.copy()
-        np_recty.y += int(dis.y)
-        if self.game_manager.check_collision(np_recty):
-            self.position.y = self._snap_to_grid(self.position.y)
+            self.position.x = next_x
+
+        # 2. Test Y Movement
+        next_y = self.position.y + dis.y
+        test_rect_y = self.animation.rect.copy()
+        test_rect_y.x = int(self.position.x)  # Use validated X
+        test_rect_y.y = int(next_y)
+
+        collision_rect_y = test_rect_y.inflate(HITBOX_INSET, HITBOX_INSET)
+
+        if self.game_manager.check_collision(collision_rect_y):
+            dis.y = 0  # Block Y movement
         else:
-            self.position.y += dis.y
+            self.position.y = next_y
         if self.tp_cooldown > 0:
             self.tp_cooldown -= dt
         elif self.tp_cooldown <= 0:
@@ -242,13 +288,33 @@ class Player(Entity):
             Position(self.animation.rect.left + 16, self.animation.rect.top - 30)
         )
         self.bush_cd -= dt
-        if self.game_manager.check_bush(self.animation.rect) and self.bush_cd <= 0:
-            self.bush_dt = True
-            if input_manager.key_down(pg.K_SPACE):
-                getattr(scene_manager._current_scene, "bush").interact()
-                self.bush_cd = 2
-        else:
+        # New Bush Mechanics:
+        # 1. Check if in bush
+        if self.game_manager.check_bush(self.animation.rect):
+            # 2. Only check if moving and cooldown expired
+            if self.is_moving and self.bush_cd <= 0:
+                self.bush_cd = 0.5  # Check every 0.5s walking in bush
+
+                # 3. 40% chance encounter
+                if random.random() < 0.4:
+                    # 4. Check for alive pokemon
+                    if not gh.gm.bag.has_alive_pokemon():
+                        # Maybe show popup? or just ignore
+                        pass
+                    else:
+                        self.bush_dt = True  # Show exclamation
+                        self.bush_enter = True  # Flag to enter battle
+                        # Stop player? (For now we just let them slide into it)
+
+        # If bush_enter flag is set, wait a brief moment (popup) then start
+        if self.bush_enter and self.bush_dt:
+            # Just use a timer or speed up entrance
+            # For simplicity, trigger immediately after one frame of popup?
+            # Or we can let it linger. Let's trigger interact() on Bush class which we will modify
+            getattr(scene_manager._current_scene, "bush").interact()
+            self.bush_enter = False
             self.bush_dt = False
+            self.bush_cd = 3.0  # Global cooldown after fight
 
         # Smooth Camera Logic
         if self.game_manager.current_map:
@@ -330,10 +396,16 @@ class Bush:
 
     def interact(self):
         """Interact."""
+        # Double check party just in case called manually (though currently only via update)
+        if not gh.gm.bag.has_alive_pokemon():
+            return
+
         if not self.monsters:
             self.monsters = generate_party(gh.gm.player_level, 1)
+            gh.gm.current_fight = self
             scene_manager.change_scene("encounter")
         else:
             self.monsters.clear()
             self.monsters = generate_party(gh.gm.player_level, 1)
+            gh.gm.current_fight = self
             scene_manager.change_scene("encounter")

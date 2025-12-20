@@ -20,6 +20,7 @@ class EvolutionOverlay(Overlay):
     STATE_LEVITATING = "LEVITATING"
     STATE_SLIDING_DOWN = "SLIDING_DOWN"
     STATE_EVOLVING = "EVOLVING"
+    STATE_FADING = "FADING"
     STATE_SUCCESS = "SUCCESS"
 
     def __init__(self):
@@ -61,7 +62,8 @@ class EvolutionOverlay(Overlay):
         sh = crd(GameSettings.SCREEN_HEIGHT)
 
         self.clear()
-        self.show_poke_sprite = True
+        self.show_poke1_sprite = True
+        self.show_poke2_sprite = False
 
         # 1. Background Panel (Initially off-screen bottom)
         self.bg = Sprite(
@@ -93,8 +95,21 @@ class EvolutionOverlay(Overlay):
         self.original_poke_image = self.poke_sprite.image.copy()
         self.add_passive(self.poke_sprite)
 
-        # No preview as requested
-        self.next_poke_sprite = None
+        # Create evolved pokemon sprite (hidden initially)
+        target_id = None
+        pid = monster_data.get("id", 0)
+        if pid in PokeDex.data:
+            target_id = PokeDex.data[pid].get("evolution", {}).get("to")
+
+        if target_id and target_id in PokeDex.data:
+            evolved_sprite_path = PokeDex.data[target_id]["sprite_path"]
+        else:
+            evolved_sprite_path = "pokemon/0.png"
+
+        self.poke_sprite2 = Sprite(evolved_sprite_path, (128, 128))
+        self.poke_sprite2.rect.center = (sw // 2, sh // 2 - 50)
+        self.original_poke2_image = self.poke_sprite2.image.copy()
+        self.add_passive(self.poke_sprite2)
 
         # 3. Evolve Button
         self.evolve_btn = Button(
@@ -142,9 +157,7 @@ class EvolutionOverlay(Overlay):
         if self.btn_text in self.components:
             self.components.remove(self.btn_text)
 
-        # Hide the "Next form" preview and arrow if they exist
-        if self.next_poke_sprite in self.components:
-            self.components.remove(self.next_poke_sprite)
+        # Hide arrow text if it exists
         if hasattr(self, "arrow_text") and self.arrow_text in self.components:
             self.components.remove(self.arrow_text)
 
@@ -179,59 +192,55 @@ class EvolutionOverlay(Overlay):
 
         elif self.state == self.STATE_PULSING:
             self.tween_time += dt
-            # Pulse for 1.5 seconds
+            # Pulse + Levitate for 1.5 seconds simultaneously
             pulse_dur = 1.5
+            t_pulse = min(1.0, self.tween_time / pulse_dur)
+
+            # Levitation: Sprite moves UP while pulsing
+            start_y = self.bg_target_y + self.panel_h // 3
+            target_y = sh // 2 - 50
+            ease = t_pulse * (2 - t_pulse)  # Ease out quad
+
+            # Panel slides DOWN (out of the way)
+            panel_start_y = self.bg_target_y
+            panel_end_y = sh  # Off screen bottom
+            self.bg.rect.top = int(panel_start_y + (panel_end_y - panel_start_y) * ease)
+
             if self.tween_time >= pulse_dur:
-                self.state = self.STATE_LEVITATING
+                self.state = self.STATE_EVOLVING
                 self.tween_time = 0.0
-                # Restore original image just in case
+                # Restore original image
                 if self.original_poke_image:
                     self.poke_sprite.image = self.original_poke_image
                     self.poke_sprite.rect = self.poke_sprite.image.get_rect(
-                        center=self.poke_sprite.rect.center
+                        center=(sw // 2, target_y)
                     )
+                self.star_anim.rect.center = self.poke_sprite.rect.center
+                self.star_anim.play(self._on_animation_finish)
             else:
                 # Sine wave pulsing: scale between 1.0 and 1.2
-                # Frequency increases? Let's keep it simple first.
-                scale_factor = 1.0 + 0.2 * math.sin(self.tween_time * 10)
-                if scale_factor < 1.0:
-                    scale_factor = 1.0  # Clamp bottom
+                pulse_phase = self.tween_time * 10
+                scale_factor = 1.0 + 0.2 * abs(math.sin(pulse_phase))
+
+                # White pulsing: oscillate white mix intensity
+                white_intensity = int(128 + 127 * abs(math.sin(pulse_phase)))
 
                 if self.original_poke_image:
                     w, h = self.original_poke_image.get_size()
                     new_size = (int(w * scale_factor), int(h * scale_factor))
-                    self.poke_sprite.image = pg.transform.scale(
-                        self.original_poke_image, new_size
-                    )
+                    scaled = pg.transform.scale(self.original_poke_image, new_size)
+
+                    # Apply white tint overlay
+                    white_overlay = pg.Surface(scaled.get_size(), pg.SRCALPHA)
+                    white_overlay.fill((255, 255, 255, white_intensity))
+                    scaled.blit(white_overlay, (0, 0), special_flags=pg.BLEND_RGBA_ADD)
+
+                    self.poke_sprite.image = scaled
+                    # Position sprite while levitating
+                    current_y = int(start_y + (target_y - start_y) * ease)
                     self.poke_sprite.rect = self.poke_sprite.image.get_rect(
-                        center=self.poke_sprite.rect.center
+                        center=(sw // 2, current_y)
                     )
-
-        elif self.state == self.STATE_LEVITATING:
-            self.tween_time += dt
-            # Levitate up and Panel slides down
-            t = min(1.0, self.tween_time / 1.0)  # 1 second levitation
-
-            # 1. Sprite moves UP
-            # Start position: (sw // 2, self.bg_target_y + self.panel_h // 3)
-            # Target position: (sw // 2, sh // 2 - 50)
-            start_y = self.bg_target_y + self.panel_h // 3
-            target_y = sh // 2 - 50
-
-            ease = t * (2 - t)  # Ease out quad
-            self.poke_sprite.rect.centery = int(start_y + (target_y - start_y) * ease)
-
-            # center x is always sw // 2 now
-            self.poke_sprite.rect.centerx = sw // 2
-
-            # 2. Panel moves DOWN (Slide away) - REMOVED
-            # We want the panel to stay background for a "popup" feel isn't needed if it never leaves.
-            # It just stays there.
-
-            if t >= 1.0:
-                self.state = self.STATE_EVOLVING
-                self.star_anim.rect.center = self.poke_sprite.rect.center
-                self.star_anim.play(self._on_animation_finish)
 
         elif self.state == self.STATE_EVOLVING:
             self.star_anim.rect.center = self.poke_sprite.rect.center
@@ -242,18 +251,7 @@ class EvolutionOverlay(Overlay):
             acc = self.star_anim.accumulator
             dur = self.star_anim.duration
 
-            # --- Screen Flash Effect ---
-            # Flash peak at 50% (evolution moment)
-            if acc > dur * 0.4 and acc < dur * 0.6:
-                # ramp up 0.4-0.5, ramp down 0.5-0.6
-                t_flash = (acc - dur * 0.4) / (dur * 0.2)
-                # Triangle wave 0 -> 255 -> 0
-                if t_flash < 0.5:
-                    self.flash_alpha = int(255 * (t_flash * 2))
-                else:
-                    self.flash_alpha = int(255 * (1 - (t_flash - 0.5) * 2))
-            else:
-                self.flash_alpha = 0
+            # No screen flash - removed
 
             # 1. Start Flash White (Mask) of Sprite
             if acc > dur * 0.1 and acc < dur * 0.2:
@@ -282,31 +280,54 @@ class EvolutionOverlay(Overlay):
                     )  # Update original for landing
 
             if acc > dur * 0.9:
-                self.show_poke_sprite = False
+                self.show_poke1_sprite = False
+                # Transition to fading state with white wash
+                self.state = self.STATE_FADING
+                self.tween_time = 0.0
+                self.flash_alpha = 255  # Start fully white
+                # Position evolved sprite at center (same as where original was)
+                sw = crd(GameSettings.SCREEN_WIDTH)
+                sh = crd(GameSettings.SCREEN_HEIGHT)
+                self.poke_sprite2.rect.center = (sw // 2, sh // 2 - 50)
+
+        elif self.state == self.STATE_FADING:
+            self.tween_time += dt
+            fade_dur = 0.8  # Fade duration
+
+            if self.tween_time >= fade_dur:
+                # Fade complete, trigger callback and go to success
+                self.flash_alpha = 0
+                self._finish_evolution()
+            else:
+                # Fade out white wash to reveal evolved pokemon
+                t = self.tween_time / fade_dur
+                self.flash_alpha = int(255 * (1 - t))
+                # Show the evolved sprite during fade
+                self.show_poke2_sprite = True
 
         elif self.state == self.STATE_SUCCESS:
             self.tween_time += dt
 
-            # Landing/Thud Effect (First 0.3s)
+            # Landing/Thud Effect (First 0.3s) for evolved sprite
             if self.tween_time < 0.3:
                 # Scale from 2.0 down to 1.0
                 t_land = self.tween_time / 0.3
                 scale_land = 2.0 - 1.0 * t_land  # Linear 2 -> 1
-                if self.original_poke_image:
-                    w, h = self.original_poke_image.get_size()
+                if self.original_poke2_image:
+                    w, h = self.original_poke2_image.get_size()
                     new_size = (int(w * scale_land), int(h * scale_land))
-                    self.poke_sprite.image = pg.transform.scale(
-                        self.original_poke_image, new_size
+                    self.poke_sprite2.image = pg.transform.scale(
+                        self.original_poke2_image, new_size
                     )
-                    self.poke_sprite.rect = self.poke_sprite.image.get_rect(
-                        center=self.poke_sprite.rect.center
+                    self.poke_sprite2.rect = self.poke_sprite2.image.get_rect(
+                        center=self.poke_sprite2.rect.center
                     )
             elif self.tween_time < 0.4 and self.tween_time >= 0.3:
                 # Ensure resets to 1.0 exactly
-                if self.original_poke_image:
-                    self.poke_sprite.image = self.original_poke_image
-                    self.poke_sprite.rect = self.poke_sprite.image.get_rect(
-                        center=self.poke_sprite.rect.center
+                if self.original_poke2_image:
+                    self.poke_sprite2.image = self.original_poke2_image
+                    self.poke_sprite2.rect = self.poke_sprite2.image.get_rect(
+                        center=self.poke_sprite2.rect.center
                     )
 
             # Auto close after 5 seconds, or click after 1.5 seconds default
@@ -315,31 +336,23 @@ class EvolutionOverlay(Overlay):
             elif self.tween_time >= 1.5 and input_manager.mouse_pressed(1):
                 self.close()
 
-    def _on_animation_finish(self):
-        """Called when star animation ends."""
+    def _finish_evolution(self):
+        """Called after fade completes to finalize evolution."""
         Logger.info("Evolution animation finished.")
         # Trigger actual data change
         if self.real_callback:
             self.real_callback()
 
-        # Refetch evolved data for display
+        sw = crd(GameSettings.SCREEN_WIDTH)
+        sh = crd(GameSettings.SCREEN_HEIGHT)
+
+        # Refetch evolved name for display
         new_name = self.monster_data.get("name", "Unknown")
-        new_id = self.monster_data.get("id", 0)
 
-        # Update sprite to evolved version
-        if new_id in PokeDex.data:
-            sprite_path = PokeDex.data[new_id]["sprite_path"]
-            evolved_img = resource_manager.get_image(sprite_path)
-            # Scale properly
-            scaled_img = pg.transform.scale(evolved_img, (128, 128))
-            self.poke_sprite.image = scaled_img  # Using setter is safer
-            # Reset position
-            sw = crd(GameSettings.SCREEN_WIDTH)
-            sh = crd(GameSettings.SCREEN_HEIGHT)
-            self.poke_sprite.rect.center = (sw // 2, sh // 2 - 50)
+        # Position evolved sprite at center
+        self.poke_sprite2.rect.center = (sw // 2, sh // 2 - 50)
 
-        # Restore Background Panel position for Success screen
-        self.bg.rect.top = self.bg_target_y
+        # Background panel stays off-screen (don't slide back up)
 
         self.msg_text.change_text(
             f"Congratulations! {self.msg_name} evolved into {new_name}!", pos="center"
@@ -347,9 +360,16 @@ class EvolutionOverlay(Overlay):
         self.msg_text.rect.centerx = sw // 2
         self.msg_text.rect.bottom = sh - 50
 
-        self.show_poke_sprite = True
+        # Show evolved sprite, hide original
+        self.show_poke1_sprite = False
+        self.show_poke2_sprite = True
         self.state = self.STATE_SUCCESS
         self.tween_time = 0.0
+
+    def _on_animation_finish(self):
+        """Called when star animation ends - now just a passthrough."""
+        # The actual finish is now handled by STATE_FADING
+        pass
 
     def draw(self, screen: pg.Surface) -> None:
         """Draw."""
@@ -370,7 +390,10 @@ class EvolutionOverlay(Overlay):
         # Draw passive components (Sprites, Texts)
         for t in self.components:
             if t == self.poke_sprite:
-                if getattr(self, "show_poke_sprite", True):
+                if getattr(self, "show_poke1_sprite", True):
+                    t.draw(screen)
+            elif t == self.poke_sprite2:
+                if getattr(self, "show_poke2_sprite", False):
                     t.draw(screen)
             else:
                 t.draw(screen)

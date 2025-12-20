@@ -111,13 +111,29 @@ class EnemyTrainer(Entity):
 
     def interact(self):
         """Interact."""
-        if not self._monsters:
-            self._monsters = generate_party(gh.gm.player_level)
-            scene_manager.change_scene("battle")
+
+        # 1. Check for alive Pokemon
+        if not gh.gm.bag.has_alive_pokemon():
+            if gh.gm.dialog_overlay:
+                gh.gm.dialog_overlay.setup("You have no alive Pokemon!")
+            return
+
+        # 2. Define callback to start battle
+        def start_battle():
+            if not self._monsters:
+                self._monsters = generate_party(gh.gm.player_level)
+                scene_manager.change_scene("battle")
+            else:
+                self._monsters.clear()
+                self._monsters = generate_party(gh.gm.player_level)
+                scene_manager.change_scene("battle")
+
+        # 3. Show dialog if possible, else start immediately
+        if gh.gm.dialog_overlay:
+            # Default dialog for now, later could be property of trainer
+            gh.gm.dialog_overlay.setup("Prepare to fight!", callback=start_battle)
         else:
-            self._monsters.clear()
-            self._monsters = generate_party(gh.gm.player_level)
-            scene_manager.change_scene("battle")
+            start_battle()
 
     def _set_direction(self, direction: Direction) -> None:
         self.direction = direction

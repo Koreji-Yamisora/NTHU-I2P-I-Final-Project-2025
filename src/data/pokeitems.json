@@ -44,7 +44,7 @@
     },
     "Coins": {
       "sprite_path": "ingame_ui/coin.png",
-      "price": 1
+      "price": 1000
     },
     "Pokeball": {
       "sprite_path": "ball/poke.png",
@@ -182,32 +182,32 @@
       "catch_rate": 1.0
     },
     "X Attack": {
-      "sprite_path": "ingame_ui/potion.png",
+      "sprite_path": "medicine/x-attack.png",
       "stat_boost": "atk",
       "boost_amount": 2,
       "price": 1000
     },
     "X Defense": {
       "count": 2,
-      "sprite_path": "ingame_ui/potion.png",
+      "sprite_path": "medicine/x-defense.png",
       "stat_boost": "def",
       "boost_amount": 2,
       "price": 1000
     },
     "X Sp. Atk": {
-      "sprite_path": "ingame_ui/potion.png",
+      "sprite_path": "medicine/x-sp-atk.png",
       "stat_boost": "spa",
       "boost_amount": 2,
       "price": 1000
     },
     "X Sp. Def": {
-      "sprite_path": "ingame_ui/potion.png",
+      "sprite_path": "medicine/x-sp-def.png",
       "stat_boost": "spd",
       "boost_amount": 2,
       "price": 1000
     },
     "X Speed": {
-      "sprite_path": "ingame_ui/potion.png",
+      "sprite_path": "medicine/x-speed.png",
       "stat_boost": "spe",
       "boost_amount": 2,
       "price": 1000

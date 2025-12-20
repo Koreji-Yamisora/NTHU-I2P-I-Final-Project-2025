@@ -70,7 +70,7 @@ class StarterOverlay(Overlay):
         )
         slot_bg.image = color.recol(slot_bg.image, (60, 60, 60))
         slot_bg.rect.topleft = (x, y)
-        self.add_passive(slot_bg)
+        self.add_bg(slot_bg)
 
         # Pokémon data
         poke_data = pokedex.data[starter_id]

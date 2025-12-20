@@ -916,11 +916,11 @@ class GameScene(Scene):
             def get_sort_key(obj):
                 # 1. Entity (Player, NPC, Enemy) - has 'animation' attribute
                 if hasattr(obj, "animation") and hasattr(obj.animation, "rect"):
-                    return obj.animation.rect.centery
+                    return obj.animation.rect.bottom
                 # 2. Online Players - are 'Animation' instances
                 # We identify them by checking for specific Animation attributes
                 elif hasattr(obj, "cur_row") and hasattr(obj, "rect"):
-                    return obj.rect.centery
+                    return obj.rect.bottom
                 # 3. Map Objects (Trees, Bushes) - default Sortable Objects
                 elif hasattr(obj, "rect"):
                     return obj.rect.bottom

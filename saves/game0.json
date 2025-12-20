@@ -9,8 +9,8 @@
           "destination": "gym.tmx"
         },
         {
-          "x": 22,
-          "y": 31,
+          "x": 61,
+          "y": 11,
           "destination": "world.tmx"
         }
       ],

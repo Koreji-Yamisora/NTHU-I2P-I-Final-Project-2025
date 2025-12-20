@@ -7,6 +7,11 @@
           "x": 24,
           "y": 23,
           "destination": "gym.tmx"
+        },
+        {
+          "x": 61,
+          "y": 11,
+          "destination": "world.tmx"
         }
       ],
       "player": {
